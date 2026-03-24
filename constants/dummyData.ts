@@ -21,7 +21,65 @@ export const users = [
 ];
 
 export const workspaces = [
-  { id: 1, name: 'Microsoft Workspaces' },
+  { id: 1, name: "omar's Workspace", members: 1, role: 'Owner' },
+  { id: 2, name: 'Design Team', members: 5, role: 'Editor' },
+  { id: 3, name: 'Dev Studio', members: 12, role: 'Admin' },
+];
+
+// Packages from DB schema
+export const packages = [
+  {
+    id: 1,
+    name: 'Silver Package',
+    description: 'Perfect for individuals and small teams getting started.',
+    price_per_year: 100.00,
+    max_workspaces: 3,
+    max_spaces: 6,
+    is_active: true,
+    features: [
+      'Up to 3 Workspaces',
+      'Up to 6 Spaces',
+      'Basic Task Management',
+      'Team Collaboration',
+      'Calendar View',
+    ],
+  },
+  {
+    id: 2,
+    name: 'Gold Package',
+    description: 'Ideal for growing teams who need more power and flexibility.',
+    price_per_year: 250.00,
+    max_workspaces: 10,
+    max_spaces: 25,
+    is_active: true,
+    popular: true,
+    features: [
+      'Up to 10 Workspaces',
+      'Up to 25 Spaces',
+      'Advanced Task Management',
+      'AI Assistant Access',
+      'Priority Support',
+      'Custom Labels & Boards',
+    ],
+  },
+  {
+    id: 3,
+    name: 'Platinum Package',
+    description: 'For large organizations with unlimited needs.',
+    price_per_year: 500.00,
+    max_workspaces: -1, // unlimited
+    max_spaces: -1, // unlimited
+    is_active: true,
+    features: [
+      'Unlimited Workspaces',
+      'Unlimited Spaces',
+      'Full AI Assistant',
+      'Advanced Analytics',
+      'Dedicated Support',
+      'Custom Integrations',
+      'Admin Controls',
+    ],
+  },
 ];
 
 export const spaces = [

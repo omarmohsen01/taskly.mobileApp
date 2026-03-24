@@ -47,6 +47,24 @@ export default function RootLayout() {
             animation: 'slide_from_right',
           }}
         />
+        <Stack.Screen
+          name="packages"
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="subscription-success"
+          options={{
+            animation: 'fade',
+          }}
+        />
+        <Stack.Screen
+          name="create-workspace"
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style="light" />

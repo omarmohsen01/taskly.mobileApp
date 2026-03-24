@@ -1,23 +1,41 @@
+import { currentUser, labels, myTaskTabs, taskProgress, tasks, users, workspaces } from '@/constants/dummyData';
+import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
+  Dimensions,
   Image,
+  Modal,
+  ScrollView,
   StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
-import { currentUser, tasks, labels, users, taskProgress, myTaskTabs } from '@/constants/dummyData';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(0);
+  const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(workspaces[0]?.id);
 
   const todayTasks = tasks.filter(t => t.board_column_id !== 3);
+  const currentWorkspace = workspaces.find(w => w.id === selectedWorkspaceId) || workspaces[0];
+
+  const handleSelectWorkspace = (id: number) => {
+    setSelectedWorkspaceId(id);
+    setShowWorkspaceModal(false);
+  };
+
+  const handleCreateWorkspace = () => {
+    setShowWorkspaceModal(false);
+    router.push('/packages');
+  };
 
   return (
     <View style={styles.container}>
@@ -26,6 +44,34 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        {/* Workspace Selector Bar */}
+        <TouchableOpacity
+          style={styles.workspaceBar}
+          activeOpacity={0.7}
+          onPress={() => setShowWorkspaceModal(true)}
+        >
+          <View style={styles.workspaceLeft}>
+            <View style={styles.workspaceIcon}>
+              <Text style={styles.workspaceIconText}>
+                {currentWorkspace.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <Text style={styles.workspaceName} numberOfLines={1}>
+              {currentWorkspace.name}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={AppColors.textMuted} />
+          </View>
+          <View style={styles.workspaceRight}>
+            <TouchableOpacity style={styles.workspaceAction}>
+              <Ionicons name="person-add-outline" size={18} color={AppColors.textMuted} />
+            </TouchableOpacity>
+            <Image
+              source={{ uri: currentUser.avatar }}
+              style={styles.workspaceAvatar}
+            />
+          </View>
+        </TouchableOpacity>
+
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -183,6 +229,80 @@ export default function HomeScreen() {
         {/* Bottom padding for tab bar */}
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Workspace Selector Modal */}
+      <Modal
+        visible={showWorkspaceModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowWorkspaceModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowWorkspaceModal(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+              <View style={styles.modalSheet}>
+                {/* Modal Header */}
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Workspaces</Text>
+                  <TouchableOpacity
+                    onPress={() => setShowWorkspaceModal(false)}
+                    style={styles.modalCloseBtn}
+                  >
+                    <Ionicons name="close" size={22} color={AppColors.white} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Workspace List */}
+                <View style={styles.workspaceList}>
+                  {workspaces.map((ws) => (
+                    <TouchableOpacity
+                      key={ws.id}
+                      style={styles.workspaceItem}
+                      activeOpacity={0.7}
+                      onPress={() => handleSelectWorkspace(ws.id)}
+                    >
+                      <View style={styles.workspaceItemLeft}>
+                        <View style={[
+                          styles.workspaceItemIcon,
+                          { backgroundColor: ws.id === selectedWorkspaceId ? AppColors.accent : AppColors.textMuted },
+                        ]}>
+                          <Text style={styles.workspaceItemIconText}>
+                            {ws.name.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <View style={styles.workspaceItemInfo}>
+                          <Text style={[
+                            styles.workspaceItemName,
+                            ws.id === selectedWorkspaceId && styles.workspaceItemNameActive,
+                          ]}>
+                            {ws.name}
+                          </Text>
+                          <Text style={styles.workspaceItemMeta}>
+                            {ws.members} {ws.members === 1 ? 'member' : 'members'} • {ws.role}
+                          </Text>
+                        </View>
+                      </View>
+                      {ws.id === selectedWorkspaceId && (
+                        <Ionicons name="checkmark" size={24} color={AppColors.accent} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Create Workspace Button */}
+                <TouchableOpacity
+                  style={styles.createWorkspaceBtn}
+                  activeOpacity={0.8}
+                  onPress={handleCreateWorkspace}
+                >
+                  <Ionicons name="add" size={22} color={AppColors.white} />
+                  <Text style={styles.createWorkspaceBtnText}>Create Workspace</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -193,7 +313,63 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.background,
   },
   scrollContent: {
-    paddingTop: 60,
+    paddingTop: 50,
+  },
+  // Workspace Bar
+  workspaceBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  workspaceLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    flex: 1,
+  },
+  workspaceIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: AppColors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  workspaceIconText: {
+    color: AppColors.background,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  workspaceName: {
+    color: AppColors.white,
+    fontSize: 16,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  workspaceRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  workspaceAction: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: AppColors.cardBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: AppColors.border,
+  },
+  workspaceAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: AppColors.success,
   },
   // Header
   header: {
@@ -450,5 +626,102 @@ const styles = StyleSheet.create({
   metaText: {
     color: AppColors.textMuted,
     fontSize: 12,
+  },
+  // Workspace Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: AppColors.background,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    paddingBottom: 40,
+    maxHeight: SCREEN_HEIGHT * 0.55,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xxl,
+    paddingBottom: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.border,
+  },
+  modalTitle: {
+    color: AppColors.white,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: AppColors.cardBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  workspaceList: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.lg,
+  },
+  workspaceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  workspaceItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    flex: 1,
+  },
+  workspaceItemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  workspaceItemIconText: {
+    color: AppColors.background,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  workspaceItemInfo: {
+    flex: 1,
+  },
+  workspaceItemName: {
+    color: AppColors.white,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  workspaceItemNameActive: {
+    color: AppColors.white,
+  },
+  workspaceItemMeta: {
+    color: AppColors.textMuted,
+    fontSize: 13,
+    marginTop: 2,
+  },
+  createWorkspaceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    marginHorizontal: Spacing.xl,
+    marginTop: Spacing.xl,
+    paddingVertical: 16,
+    backgroundColor: AppColors.accent,
+    borderRadius: BorderRadius.lg,
+  },
+  createWorkspaceBtnText: {
+    color: AppColors.white,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
