@@ -1,4 +1,4 @@
-import { currentUser, labels, myTaskTabs, taskProgress, tasks, users, workspaces } from '@/constants/dummyData';
+import { currentUser, folders, labels, lists, myTaskTabs, spaces, taskProgress, tasks, users, workspaces } from '@/constants/dummyData';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -23,6 +23,14 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState(0);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(workspaces[0]?.id);
+  const [spacesExpanded, setSpacesExpanded] = useState(true);
+  const [expandedSpaces, setExpandedSpaces] = useState<Record<number, boolean>>({});
+  const [expandedFolders, setExpandedFolders] = useState<Record<number, boolean>>({});
+
+  const toggleSpace = (id: number) =>
+    setExpandedSpaces(prev => ({ ...prev, [id]: !prev[id] }));
+  const toggleFolder = (id: number) =>
+    setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
 
   const todayTasks = tasks.filter(t => t.board_column_id !== 3);
   const currentWorkspace = workspaces.find(w => w.id === selectedWorkspaceId) || workspaces[0];
@@ -63,7 +71,7 @@ export default function HomeScreen() {
           </View>
           <View style={styles.workspaceRight}>
             <TouchableOpacity style={styles.workspaceAction}>
-              <Ionicons name="person-add-outline" size={18} color={AppColors.textMuted} />
+              <Ionicons name="notifications-outline" size={18} color={AppColors.textMuted} />
             </TouchableOpacity>
             <Image
               source={{ uri: currentUser.avatar }}
@@ -72,26 +80,188 @@ export default function HomeScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Image
-              source={{ uri: currentUser.avatar }}
-              style={styles.avatar}
-            />
-            <View>
-              <Text style={styles.userName}>{currentUser.first_name} {currentUser.last_name}</Text>
-              <Text style={styles.greeting}>Good Morning</Text>
+        {/* Notification Cards Row */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.notifCardsRow}
+        >
+          <TouchableOpacity style={styles.notifCard} activeOpacity={0.7}>
+            <Ionicons name="arrow-undo-outline" size={20} color={AppColors.white} />
+            <Text style={styles.notifCardTitle}>Replies</Text>
+            <Text style={styles.notifCardSub}>0 new</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.notifCard} activeOpacity={0.7}>
+            <Ionicons name="checkbox-outline" size={20} color={AppColors.white} />
+            <Text style={styles.notifCardTitle}>Assigned</Text>
+            <Text style={styles.notifCardSub}>0 comments</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.notifCard} activeOpacity={0.7}>
+            <Ionicons name="at-outline" size={20} color={AppColors.white} />
+            <Text style={styles.notifCardTitle}>Activity</Text>
+            <Text style={styles.notifCardSub}>-</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.notifCard} activeOpacity={0.7}>
+            <Ionicons name="mail-outline" size={20} color={AppColors.white} />
+            <Text style={styles.notifCardTitle}>Inbox</Text>
+            <Text style={styles.notifCardSub}>0 unread</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        {/* Spaces Section */}
+        <View style={styles.spacesSection}>
+          <TouchableOpacity
+            style={styles.spacesHeader}
+            activeOpacity={0.7}
+            onPress={() => setSpacesExpanded(!spacesExpanded)}
+          >
+            <Text style={styles.spacesTitle}>Spaces</Text>
+            <View style={styles.spacesHeaderRight}>
+              <TouchableOpacity
+                style={styles.spacesAddBtn}
+                activeOpacity={0.7}
+                onPress={() => router.push('/create-space')}
+              >
+                <Ionicons name="add" size={18} color={AppColors.textMuted} />
+              </TouchableOpacity>
+              <Ionicons
+                name={spacesExpanded ? 'chevron-down' : 'chevron-forward'}
+                size={18}
+                color={AppColors.textMuted}
+              />
             </View>
-          </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Ionicons name="search-outline" size={22} color={AppColors.white} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Ionicons name="notifications-outline" size={22} color={AppColors.white} />
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
+
+          {spacesExpanded && (
+            <View style={styles.spacesListContainer}>
+              {/* All Tasks */}
+              <TouchableOpacity style={styles.spacesItem} activeOpacity={0.7}>
+                <View style={styles.spacesItemLeft}>
+                  <View style={styles.spacesItemIconWrap}>
+                    <Ionicons name="grid-outline" size={16} color={AppColors.textMuted} />
+                  </View>
+                  <Text style={styles.spacesItemText}>
+                    All Tasks <Text style={styles.spacesItemSub}>- #{currentWorkspace.name}</Text>
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Shared with me */}
+              <TouchableOpacity style={styles.spacesItem} activeOpacity={0.7}>
+                <View style={styles.spacesItemLeft}>
+                  <View style={styles.spacesItemIconWrap}>
+                    <Ionicons name="share-social-outline" size={16} color={AppColors.textMuted} />
+                  </View>
+                  <Text style={styles.spacesItemText}>Shared with me</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Dynamic Spaces */}
+              {spaces
+                .filter(s => s.workspace_id === selectedWorkspaceId)
+                .map((space) => {
+                  const isSpaceOpen = !!expandedSpaces[space.id];
+                  const spaceFolders = folders.filter(f => f.space_id === space.id);
+                  const spaceLists = lists.filter(l => l.space_id === space.id && l.folder_id === null);
+
+                  return (
+                    <View key={space.id}>
+                      {/* Space Row */}
+                      <TouchableOpacity
+                        style={styles.spacesItem}
+                        activeOpacity={0.7}
+                        onPress={() => toggleSpace(space.id)}
+                      >
+                        <View style={styles.spacesItemLeft}>
+                          <View style={[styles.spacesItemBadge, { backgroundColor: space.color || AppColors.textMuted }]}>
+                            <Text style={styles.spacesItemBadgeText}>
+                              {space.name.charAt(0).toLowerCase()}
+                            </Text>
+                          </View>
+                          <Text style={styles.spacesItemText}>{space.name}</Text>
+                        </View>
+                        <View style={styles.spaceActions}>
+                          <TouchableOpacity
+                            activeOpacity={0.7}
+                            onPress={() => router.push({ pathname: '/create-folder', params: { spaceId: space.id, spaceName: space.name } })}
+                          >
+                            <Ionicons name="add" size={18} color={AppColors.textMuted} />
+                          </TouchableOpacity>
+                          <Ionicons name="expand-outline" size={16} color={AppColors.textMuted} />
+                          <Ionicons
+                            name={isSpaceOpen ? 'chevron-down' : 'chevron-forward'}
+                            size={16}
+                            color={AppColors.textMuted}
+                          />
+                        </View>
+                      </TouchableOpacity>
+
+                      {/* Space Children */}
+                      {isSpaceOpen && (
+                        <View style={styles.nestedContainer}>
+                          {/* Folders */}
+                          {spaceFolders.map(folder => {
+                            const isFolderOpen = !!expandedFolders[folder.id];
+                            const folderLists = lists.filter(l => l.folder_id === folder.id);
+
+                            return (
+                              <View key={`f-${folder.id}`}>
+                                {/* Folder Row */}
+                                <TouchableOpacity
+                                  style={styles.folderItem}
+                                  activeOpacity={0.7}
+                                  onPress={() => toggleFolder(folder.id)}
+                                >
+                                  <View style={styles.spacesItemLeft}>
+                                    <Ionicons name="folder-outline" size={18} color={AppColors.textMuted} />
+                                    <Text style={styles.folderText}>{folder.name}</Text>
+                                  </View>
+                                  <View style={styles.spaceActions}>
+                                    <TouchableOpacity activeOpacity={0.7}>
+                                      <Ionicons name="add" size={16} color={AppColors.textMuted} />
+                                    </TouchableOpacity>
+                                    <Ionicons name="expand-outline" size={14} color={AppColors.textMuted} />
+                                    <Ionicons
+                                      name={isFolderOpen ? 'chevron-down' : 'chevron-forward'}
+                                      size={14}
+                                      color={AppColors.textMuted}
+                                    />
+                                  </View>
+                                </TouchableOpacity>
+
+                                {/* Folder Lists */}
+                                {isFolderOpen && folderLists.map(list => (
+                                  <TouchableOpacity
+                                    key={`fl-${list.id}`}
+                                    style={styles.listItem}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Ionicons name="list-outline" size={16} color={AppColors.textMuted} />
+                                    <Text style={styles.listText}>{list.name}</Text>
+                                  </TouchableOpacity>
+                                ))}
+                              </View>
+                            );
+                          })}
+
+                          {/* Space-level Lists */}
+                          {spaceLists.map(list => (
+                            <TouchableOpacity
+                              key={`sl-${list.id}`}
+                              style={styles.spaceListItem}
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons name="list-outline" size={16} color={AppColors.textMuted} />
+                              <Text style={styles.listText}>{list.name}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+            </View>
+          )}
         </View>
 
         {/* Daily Productivity */}
@@ -372,46 +542,148 @@ const styles = StyleSheet.create({
     borderColor: AppColors.success,
   },
   // Header
-  header: {
+  notifCardsRow: {
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.sm,
+    marginBottom: Spacing.xxl,
+  },
+  notifCard: {
+    backgroundColor: AppColors.cardBackground,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    minWidth: 130,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    gap: Spacing.xs,
+  },
+  notifCardTitle: {
+    color: AppColors.white,
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: Spacing.sm,
+  },
+  notifCardSub: {
+    color: AppColors.textMuted,
+    fontSize: 12,
+  },
+  // Spaces Section
+  spacesSection: {
+    paddingHorizontal: Spacing.xl,
+    marginBottom: Spacing.xl,
+  },
+  spacesHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-    marginBottom: Spacing.xxl,
+    paddingVertical: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.border,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: AppColors.cardBackground,
-  },
-  userName: {
+  spacesTitle: {
     color: AppColors.white,
     fontSize: 16,
     fontWeight: '700',
   },
-  greeting: {
-    color: AppColors.textMuted,
-    fontSize: 13,
-  },
-  headerRight: {
+  spacesHeaderRight: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.md,
   },
-  headerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  spacesAddBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spacesListContainer: {
+    marginTop: Spacing.xs,
+  },
+  spacesItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+  },
+  spacesItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    flex: 1,
+  },
+  spacesItemIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     backgroundColor: AppColors.cardBackground,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: AppColors.border,
+  },
+  spacesItemBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spacesItemBadgeText: {
+    color: AppColors.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  spacesItemText: {
+    color: AppColors.white,
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
+  },
+  spacesItemSub: {
+    color: AppColors.textMuted,
+    fontWeight: '400',
+  },
+  spaceActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  nestedContainer: {
+    paddingLeft: Spacing.xl,
+  },
+  folderItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+    paddingLeft: Spacing.md,
+  },
+  folderText: {
+    color: AppColors.white,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: Spacing.sm,
+    flex: 1,
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    paddingLeft: Spacing.xxxl + Spacing.md,
+    gap: Spacing.sm,
+    borderLeftWidth: 1,
+    borderLeftColor: AppColors.border,
+    marginLeft: Spacing.lg,
+  },
+  spaceListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    paddingLeft: Spacing.md,
+    gap: Spacing.sm,
+  },
+  listText: {
+    color: AppColors.white,
+    fontSize: 14,
+    fontWeight: '500',
   },
   // Daily Productivity
   section: {

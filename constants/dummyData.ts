@@ -83,7 +83,16 @@ export const packages = [
 ];
 
 export const spaces = [
-  { id: 1, name: 'Excel Space', description: 'Excel Space', workspace_id: 1 },
+  { id: 1, name: 'space 1', description: 'Main workspace space', workspace_id: 1, color: '#8E9196' },
+];
+
+export const folders = [
+  { id: 1, name: 'folder 1', space_id: 1, color: null },
+];
+
+export const lists = [
+  { id: 1, name: 'List', folder_id: 1, space_id: 1 },   // inside folder 1
+  { id: 2, name: 'List', folder_id: null, space_id: 1 }, // directly under space 1
 ];
 
 export const projects = [
@@ -292,3 +301,15 @@ export const taskProgress = {
 };
 
 export const myTaskTabs = ['All', "Today's Task", 'Completed', 'Every'];
+
+export const statusTemplates = [
+  { id: 1, name: 'Kanban' },
+  { id: 2, name: 'Marketing' },
+  { id: 3, name: 'Content' },
+  { id: 4, name: 'Normal' },
+  { id: 5, name: 'Scrum' },
+];
+
+export const spaceColors = [
+  null, '#FF5252', '#FFA726', '#4CAF50', '#2196F3', '#9C27B0', '#795548', '#607D8B',
+];
