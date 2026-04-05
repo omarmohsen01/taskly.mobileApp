@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, Platform, Text, Modal, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { AppColors } from '@/constants/theme';
+import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,74 +11,129 @@ const TAB_ICONS: Record<string, { active: TabIconName; inactive: TabIconName }> 
   index: { active: 'home', inactive: 'home-outline' },
   calendar: { active: 'calendar', inactive: 'calendar-outline' },
   'ai-assistant': { active: 'chatbubble-ellipses', inactive: 'chatbubble-ellipses-outline' },
-  team: { active: 'people', inactive: 'people-outline' },
+  team: { active: 'grid', inactive: 'grid-outline' },
   profile: { active: 'person', inactive: 'person-outline' },
 };
+
+type MoreItem = {
+  icon: TabIconName;
+  label: string;
+  color: string;
+};
+
+const MORE_ITEMS: MoreItem[] = [
+  { icon: 'document-text', label: 'Docs', color: '#4285F4' },
+  { icon: 'play-circle', label: 'Clips', color: '#FF0000' },
+  { icon: 'bar-chart', label: 'Dashboards', color: '#9C27B0' },
+  { icon: 'checkbox', label: 'Forms', color: '#2196F3' },
+  { icon: 'sparkles', label: 'Brain', color: '#FF6B6B' },
+  { icon: 'planet', label: 'Spaces', color: '#7C4DFF' },
+  { icon: 'reader', label: 'Notepad', color: '#FF9800' },
+  { icon: 'calendar-number', label: 'Planner', color: '#E91E63' },
+  { icon: 'chatbubbles', label: 'Chats', color: '#00897B' },
+];
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const centerIndex = 2; // AI Assistant is the center tab
+  const [showMoreGrid, setShowMoreGrid] = useState(false);
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      <View style={styles.tabBar}>
-        {state.routes.map((route, index) => {
-          const { options } = descriptors[route.key];
-          const isFocused = state.index === index;
-          const isCenter = index === centerIndex;
+    <>
+      {/* More Grid Overlay */}
+      {showMoreGrid && (
+        <Modal transparent animationType="fade" visible={showMoreGrid} onRequestClose={() => setShowMoreGrid(false)}>
+          <TouchableWithoutFeedback onPress={() => setShowMoreGrid(false)}>
+            <View style={styles.moreOverlay}>
+              <TouchableWithoutFeedback onPress={e => e.stopPropagation()}>
+                <View style={styles.moreGrid}>
+                  {MORE_ITEMS.map((item, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.moreItem}
+                      activeOpacity={0.7}
+                      onPress={() => setShowMoreGrid(false)}
+                    >
+                      <View style={styles.moreIconWrap}>
+                        <Ionicons name={item.icon} size={26} color={item.color} />
+                      </View>
+                      <Text style={styles.moreItemLabel}>{item.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+      )}
 
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
+      <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+        <View style={styles.tabBar}>
+          {state.routes.map((route, index) => {
+            const { options } = descriptors[route.key];
+            const isFocused = state.index === index;
+            const isCenter = index === centerIndex;
+            const isMore = route.name === 'team';
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name, route.params);
+            const onPress = () => {
+              if (isMore) {
+                setShowMoreGrid(prev => !prev);
+                return;
+              }
+              setShowMoreGrid(false);
+
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
+
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name, route.params);
+              }
+            };
+
+            const iconSet = TAB_ICONS[route.name] || { active: 'help-circle', inactive: 'help-circle-outline' };
+            const iconName = isFocused ? iconSet.active : iconSet.inactive;
+
+            if (isCenter) {
+              return (
+                <TouchableOpacity
+                  key={route.key}
+                  onPress={onPress}
+                  activeOpacity={0.8}
+                  style={styles.centerButtonWrapper}
+                >
+                  <View style={[styles.centerButton, isFocused && styles.centerButtonActive]}>
+                    <Ionicons
+                      name={iconName}
+                      size={26}
+                      color={isFocused ? AppColors.background : AppColors.white}
+                    />
+                  </View>
+                </TouchableOpacity>
+              );
             }
-          };
 
-          const iconSet = TAB_ICONS[route.name] || { active: 'help-circle', inactive: 'help-circle-outline' };
-          const iconName = isFocused ? iconSet.active : iconSet.inactive;
-
-          if (isCenter) {
             return (
               <TouchableOpacity
                 key={route.key}
                 onPress={onPress}
-                activeOpacity={0.8}
-                style={styles.centerButtonWrapper}
+                activeOpacity={0.7}
+                style={styles.tabButton}
               >
-                <View style={[styles.centerButton, isFocused && styles.centerButtonActive]}>
-                  <Ionicons
-                    name={iconName}
-                    size={26}
-                    color={isFocused ? AppColors.background : AppColors.white}
-                  />
-                </View>
+                <Ionicons
+                  name={isMore && showMoreGrid ? iconSet.active : iconName}
+                  size={24}
+                  color={(isMore && showMoreGrid) ? AppColors.accent : (isFocused ? AppColors.accent : AppColors.textMuted)}
+                />
+                {(isFocused || (isMore && showMoreGrid)) && <View style={styles.activeIndicator} />}
               </TouchableOpacity>
             );
-          }
-
-          return (
-            <TouchableOpacity
-              key={route.key}
-              onPress={onPress}
-              activeOpacity={0.7}
-              style={styles.tabButton}
-            >
-              <Ionicons
-                name={iconName}
-                size={24}
-                color={isFocused ? AppColors.accent : AppColors.textMuted}
-              />
-              {isFocused && <View style={styles.activeIndicator} />}
-            </TouchableOpacity>
-          );
-        })}
+          })}
+        </View>
       </View>
-    </View>
+    </>
   );
 }
 
@@ -156,5 +211,46 @@ const styles = StyleSheet.create({
   centerButtonActive: {
     backgroundColor: AppColors.accent,
     borderColor: AppColors.accent,
+  },
+  // More grid overlay
+  moreOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+    paddingBottom: 90,
+  },
+  moreGrid: {
+    backgroundColor: AppColors.cardBackground,
+    marginHorizontal: 16,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    gap: Spacing.lg,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+  },
+  moreItem: {
+    width: '28%',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+  },
+  moreIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: AppColors.background,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+  },
+  moreItemLabel: {
+    color: AppColors.white,
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });
