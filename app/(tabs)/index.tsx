@@ -1,12 +1,16 @@
-import { currentUser, folders, labels, lists, myTaskTabs, spaces, taskProgress, tasks, users, workspaces } from '@/constants/dummyData';
+import { currentUser, folders, labels, lists, spaces, tasks, users } from '@/constants/dummyData';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
+import { fetchStatistics, fetchWorkspaces, StatFilter } from '@/lib/api';
+import { useAuth } from '@/lib/auth-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   Modal,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -18,22 +22,151 @@ import {
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface Workspace {
+  id: number;
+  name: string;
+  members_count?: number;
+  role?: string;
+  owner?: { first_name: string; last_name: string };
+  members?: number; // legacy mockup field
+}
+
+interface Statistics {
+  total?: number;
+  completed?: number;
+  in_progress?: number;
+  today?: number;
+  overdue?: number;
+  completion_rate?: number;
+  [key: string]: any;
+}
+
+const myTaskTabs = ['All', 'Today', 'In Progress', 'Completed'];
+const tabToFilterMap: Record<string, StatFilter> = {
+  'All': 'all',
+  'Today': 'today',
+  'In Progress': 'in_progress',
+  'Completed': 'completed',
+};
+
+// ─── No Workspace Screen ──────────────────────────────────────────────────────
+function NoWorkspaceScreen() {
+  const router = useRouter();
+  return (
+    <View style={noWsStyles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={AppColors.background} />
+      <View style={noWsStyles.content}>
+        <View style={noWsStyles.iconWrap}>
+          <Ionicons name="grid-outline" size={56} color={AppColors.accent} />
+        </View>
+        <Text style={noWsStyles.title}>No Workspace Yet</Text>
+        <Text style={noWsStyles.subtitle}>
+          Create your first workspace to start organizing{'\n'}your tasks, projects, and team.
+        </Text>
+        <View style={noWsStyles.pills}>
+          {['📁 Organize projects', '👥 Invite your team', '✅ Track tasks'].map((pill) => (
+            <View key={pill} style={noWsStyles.pill}>
+              <Text style={noWsStyles.pillText}>{pill}</Text>
+            </View>
+          ))}
+        </View>
+        <TouchableOpacity
+          style={noWsStyles.ctaBtn}
+          activeOpacity={0.85}
+          onPress={() => router.push('/create-workspace')}
+        >
+          <Ionicons name="add" size={22} color={AppColors.background} />
+          <Text style={noWsStyles.ctaBtnText}>Create Workspace</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState(0);
+  const { token } = useAuth();
+  
+  // Workspace state
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [wsLoading, setWsLoading] = useState(true);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<number | null>(null);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(workspaces[0]?.id);
+
+  // Statistics state
+  const [stats, setStats] = useState<Statistics | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+
+  // UI State
   const [spacesExpanded, setSpacesExpanded] = useState(true);
   const [expandedSpaces, setExpandedSpaces] = useState<Record<number, boolean>>({});
   const [expandedFolders, setExpandedFolders] = useState<Record<number, boolean>>({});
+  const [refreshing, setRefreshing] = useState(false);
 
   const toggleSpace = (id: number) =>
     setExpandedSpaces(prev => ({ ...prev, [id]: !prev[id] }));
   const toggleFolder = (id: number) =>
     setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
 
-  const todayTasks = tasks.filter(t => t.board_column_id !== 3);
-  const currentWorkspace = workspaces.find(w => w.id === selectedWorkspaceId) || workspaces[0];
+  // ── Load functions ──────────────────────────────────────────────────────────
+  const loadWorkspaces = useCallback(async () => {
+    try {
+      const resp = await fetchWorkspaces();
+      const list = resp?.data ?? resp?.workspaces ?? (Array.isArray(resp) ? resp : []);
+      setWorkspaces(list);
+      if (list.length > 0 && selectedWorkspaceId === null) {
+        setSelectedWorkspaceId(list[0].id);
+      }
+    } catch (e) {
+      console.error('Workspaces load error:', e);
+    }
+  }, [selectedWorkspaceId]);
+
+  const loadStats = useCallback(async (workspaceId: number | null, filter: StatFilter) => {
+    if (workspaceId === null) return;
+    setStatsLoading(true);
+    try {
+      const resp = await fetchStatistics(workspaceId, filter);
+      const data = resp?.data ?? resp?.statistics ?? resp ?? {};
+      setStats(data);
+    } catch (e) {
+      console.error('Stats load error:', e);
+      setStats(null);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  // Sync effect
+  useEffect(() => {
+    if (!token) return;
+    (async () => {
+      setWsLoading(true);
+      await loadWorkspaces();
+      setWsLoading(false);
+    })();
+  }, [token]);
+
+  useEffect(() => {
+    if (!token || selectedWorkspaceId === null) return;
+    const filter = tabToFilterMap[myTaskTabs[activeTab]] || 'all';
+    loadStats(selectedWorkspaceId, filter);
+  }, [token, activeTab, selectedWorkspaceId]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    if (selectedWorkspaceId !== null) {
+      await Promise.all([
+        loadWorkspaces(),
+        loadStats(selectedWorkspaceId, tabToFilterMap[myTaskTabs[activeTab]] || 'all')
+      ]);
+    } else {
+      await loadWorkspaces();
+    }
+    setRefreshing(false);
+  }, [activeTab, selectedWorkspaceId]);
 
   const handleSelectWorkspace = (id: number) => {
     setSelectedWorkspaceId(id);
@@ -42,8 +175,28 @@ export default function HomeScreen() {
 
   const handleCreateWorkspace = () => {
     setShowWorkspaceModal(false);
-    router.push('/packages');
+    router.push('/create-workspace');
   };
+
+  const currentWorkspace = workspaces.find(w => w.id === selectedWorkspaceId) || workspaces[0];
+
+  if (wsLoading) {
+    return (
+      <View style={styles.centerScreen}>
+        <ActivityIndicator size="large" color={AppColors.accent} />
+      </View>
+    );
+  }
+
+  if (workspaces.length === 0) {
+    return <NoWorkspaceScreen />;
+  }
+
+  // Derived data
+  const todayTasks = tasks.filter(t => t.board_column_id !== 3);
+  const total = stats?.total ?? 0;
+  const completed = stats?.completed ?? 0;
+  const percentage = stats?.completion_rate ?? (total > 0 ? (completed / total) * 100 : 0);
 
   return (
     <View style={styles.container}>
@@ -51,6 +204,14 @@ export default function HomeScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={AppColors.accent}
+            colors={[AppColors.accent]}
+          />
+        }
       >
         {/* Workspace Selector Bar */}
         <TouchableOpacity
@@ -61,11 +222,11 @@ export default function HomeScreen() {
           <View style={styles.workspaceLeft}>
             <View style={styles.workspaceIcon}>
               <Text style={styles.workspaceIconText}>
-                {currentWorkspace.name.charAt(0).toUpperCase()}
+                {currentWorkspace?.name?.charAt(0).toUpperCase()}
               </Text>
             </View>
             <Text style={styles.workspaceName} numberOfLines={1}>
-              {currentWorkspace.name}
+              {currentWorkspace?.name}
             </Text>
             <Ionicons name="chevron-down" size={16} color={AppColors.textMuted} />
           </View>
@@ -141,7 +302,7 @@ export default function HomeScreen() {
                     <Ionicons name="grid-outline" size={16} color={AppColors.textMuted} />
                   </View>
                   <Text style={styles.spacesItemText}>
-                    All Tasks <Text style={styles.spacesItemSub}>- #{currentWorkspace.name}</Text>
+                    All Tasks <Text style={styles.spacesItemSub}>- #{currentWorkspace?.name}</Text>
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -166,7 +327,6 @@ export default function HomeScreen() {
 
                   return (
                     <View key={space.id}>
-                      {/* Space Row */}
                       <TouchableOpacity
                         style={styles.spacesItem}
                         activeOpacity={0.7}
@@ -196,17 +356,14 @@ export default function HomeScreen() {
                         </View>
                       </TouchableOpacity>
 
-                      {/* Space Children */}
                       {isSpaceOpen && (
                         <View style={styles.nestedContainer}>
-                          {/* Folders */}
                           {spaceFolders.map(folder => {
                             const isFolderOpen = !!expandedFolders[folder.id];
                             const folderLists = lists.filter(l => l.folder_id === folder.id);
 
                             return (
                               <View key={`f-${folder.id}`}>
-                                {/* Folder Row */}
                                 <TouchableOpacity
                                   style={styles.folderItem}
                                   activeOpacity={0.7}
@@ -229,7 +386,6 @@ export default function HomeScreen() {
                                   </View>
                                 </TouchableOpacity>
 
-                                {/* Folder Lists */}
                                 {isFolderOpen && folderLists.map(list => (
                                   <TouchableOpacity
                                     key={`fl-${list.id}`}
@@ -244,7 +400,6 @@ export default function HomeScreen() {
                             );
                           })}
 
-                          {/* Space-level Lists */}
                           {spaceLists.map(list => (
                             <TouchableOpacity
                               key={`sl-${list.id}`}
@@ -267,7 +422,9 @@ export default function HomeScreen() {
         {/* Daily Productivity */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Daily Productivity</Text>
-          <Text style={styles.sectionDate}>Wednesday, May 15</Text>
+          <Text style={styles.sectionDate}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </Text>
         </View>
 
         {/* Priority Task Progress Card */}
@@ -279,20 +436,26 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.progressBody}>
-            <Text style={styles.progressSubtitle}>
-              {taskProgress.completed}/{taskProgress.total} is Completed
-            </Text>
-            <View style={styles.progressBarRow}>
-              <View style={styles.progressBarBg}>
-                <View
-                  style={[
-                    styles.progressBarFill,
-                    { width: `${taskProgress.percentage}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.progressPercent}>{taskProgress.percentage.toFixed(2)}%</Text>
-            </View>
+            {statsLoading ? (
+              <ActivityIndicator color={AppColors.accent} size="small" />
+            ) : (
+              <>
+                <Text style={styles.progressSubtitle}>
+                  {completed}/{total} is Completed
+                </Text>
+                <View style={styles.progressBarRow}>
+                  <View style={styles.progressBarBg}>
+                    <View
+                      style={[
+                        styles.progressBarFill,
+                        { width: `${percentage}%` },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.progressPercent}>{percentage.toFixed(0)}%</Text>
+                </View>
+              </>
+            )}
           </View>
         </View>
 
@@ -342,7 +505,6 @@ export default function HomeScreen() {
               activeOpacity={0.7}
               onPress={() => router.push('/task-details')}
             >
-              {/* Labels */}
               <View style={styles.labelRow}>
                 {task.labels.map((labelId) => {
                   const label = labels.find(l => l.id === labelId);
@@ -355,11 +517,9 @@ export default function HomeScreen() {
                 })}
               </View>
 
-              {/* Task Title */}
               <Text style={styles.taskTitle}>{task.title}</Text>
               <Text style={styles.taskDesc}>{task.descriptions}</Text>
 
-              {/* Assignees + Edit */}
               <View style={styles.taskFooter}>
                 <View style={styles.assigneeRow}>
                   {task.assignees.slice(0, 3).map((userId, idx) => {
@@ -386,7 +546,6 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Task Metadata */}
               <View style={styles.taskMeta}>
                 <Text style={styles.metaText}>{task.projectName}</Text>
                 <Text style={styles.metaText}>Prototype</Text>
@@ -396,7 +555,6 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* Bottom padding for tab bar */}
         <View style={{ height: 100 }} />
       </ScrollView>
 
@@ -411,7 +569,6 @@ export default function HomeScreen() {
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
               <View style={styles.modalSheet}>
-                {/* Modal Header */}
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>Workspaces</Text>
                   <TouchableOpacity
@@ -422,8 +579,7 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Workspace List */}
-                <View style={styles.workspaceList}>
+                <ScrollView style={styles.workspaceList}>
                   {workspaces.map((ws) => (
                     <TouchableOpacity
                       key={ws.id}
@@ -448,7 +604,7 @@ export default function HomeScreen() {
                             {ws.name}
                           </Text>
                           <Text style={styles.workspaceItemMeta}>
-                            {ws.members} {ws.members === 1 ? 'member' : 'members'} • {ws.role}
+                            {ws.members_count ?? ws.members ?? 0} members • {ws.role ?? 'Member'}
                           </Text>
                         </View>
                       </View>
@@ -457,9 +613,8 @@ export default function HomeScreen() {
                       )}
                     </TouchableOpacity>
                   ))}
-                </View>
+                </ScrollView>
 
-                {/* Create Workspace Button */}
                 <TouchableOpacity
                   style={styles.createWorkspaceBtn}
                   activeOpacity={0.8}
@@ -482,10 +637,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: AppColors.background,
   },
+  centerScreen: {
+    flex: 1,
+    backgroundColor: AppColors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   scrollContent: {
     paddingTop: 50,
   },
-  // Workspace Bar
   workspaceBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -541,7 +701,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: AppColors.success,
   },
-  // Header
   notifCardsRow: {
     paddingHorizontal: Spacing.xl,
     gap: Spacing.sm,
@@ -566,7 +725,6 @@ const styles = StyleSheet.create({
     color: AppColors.textMuted,
     fontSize: 12,
   },
-  // Spaces Section
   spacesSection: {
     paddingHorizontal: Spacing.xl,
     marginBottom: Spacing.xl,
@@ -685,7 +843,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  // Daily Productivity
   section: {
     paddingHorizontal: Spacing.xl,
     marginBottom: Spacing.lg,
@@ -700,7 +857,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
   },
-  // Progress Card
   progressCard: {
     marginHorizontal: Spacing.xl,
     backgroundColor: AppColors.cardBackground,
@@ -721,7 +877,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  progressBody: {},
+  progressBody: {
+    paddingTop: Spacing.xs,
+  },
   progressSubtitle: {
     color: AppColors.textSecondary,
     fontSize: 13,
@@ -751,7 +909,6 @@ const styles = StyleSheet.create({
     minWidth: 55,
     textAlign: 'right',
   },
-  // My Task
   myTaskSection: {
     paddingHorizontal: Spacing.xl,
     marginBottom: Spacing.xxl,
@@ -785,7 +942,6 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: AppColors.background,
   },
-  // Today's Task
   todaySection: {
     paddingHorizontal: Spacing.xl,
   },
@@ -804,7 +960,6 @@ const styles = StyleSheet.create({
     color: AppColors.textMuted,
     fontSize: 13,
   },
-  // Task Card
   taskCard: {
     backgroundColor: AppColors.cardBackground,
     borderRadius: BorderRadius.lg,
@@ -899,7 +1054,6 @@ const styles = StyleSheet.create({
     color: AppColors.textMuted,
     fontSize: 12,
   },
-  // Workspace Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -993,6 +1147,75 @@ const styles = StyleSheet.create({
   },
   createWorkspaceBtnText: {
     color: AppColors.white,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+});
+
+const noWsStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: AppColors.background,
+  },
+  content: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xxxl,
+  },
+  iconWrap: {
+    width: 100,
+    height: 100,
+    borderRadius: 28,
+    backgroundColor: 'rgba(170,202,239,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xxl,
+    borderWidth: 1,
+    borderColor: 'rgba(170,202,239,0.2)',
+  },
+  title: {
+    color: AppColors.white,
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+  },
+  subtitle: {
+    color: AppColors.textMuted,
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.xxxl,
+  },
+  pills: {
+    gap: Spacing.sm,
+    marginBottom: Spacing.xxxl,
+    alignItems: 'flex-start',
+  },
+  pill: {
+    backgroundColor: AppColors.cardBackground,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+  },
+  pillText: {
+    color: AppColors.textSecondary,
+    fontSize: 14,
+  },
+  ctaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: AppColors.accent,
+    paddingHorizontal: Spacing.xxxl,
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+  },
+  ctaBtnText: {
+    color: AppColors.background,
     fontSize: 16,
     fontWeight: '700',
   },

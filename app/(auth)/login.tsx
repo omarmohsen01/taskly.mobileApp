@@ -1,28 +1,48 @@
+import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
+import { signIn } from '@/lib/api';
+import { useAuth } from '@/lib/auth-store';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { saveToken } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = () => {
-    // TODO: Replace with API call
-    router.replace('/(tabs)');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleLogin = async () => {
+    if (loading) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const resp = await signIn(email.trim(), password);
+      const token = resp?.token || resp?.data?.token || resp?.access_token || resp?.data?.access_token;
+      if (token) {
+        await saveToken(token); // updates context → AuthGuard auto-redirects
+      } else {
+        router.replace('/(tabs)');
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Failed to sign in');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -103,8 +123,12 @@ export default function LoginScreen() {
             onPress={handleLogin}
             activeOpacity={0.8}
           >
-            <Text style={styles.loginButtonText}>Sign In</Text>
+          <Text style={styles.loginButtonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
           </TouchableOpacity>
+
+        {error && (
+          <Text style={{ color: AppColors.error, textAlign: 'center', marginBottom: Spacing.lg }}>{error}</Text>
+        )}
 
           {/* Divider */}
           <View style={styles.divider}>

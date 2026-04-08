@@ -13,21 +13,53 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
+import { signUp } from '@/lib/api';
+import { useAuth } from '@/lib/auth-store';
 
 export default function SignUpScreen() {
   const router = useRouter();
+  const { saveToken } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [countryCode, setCountryCode] = useState('+20');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSignUp = () => {
-    // TODO: Replace with API call
-    router.replace('/(tabs)');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSignUp = async () => {
+    if (loading) return;
+    setError(null);
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    setLoading(true);
+    try {
+      const resp = await signUp({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        country_code: countryCode.trim() || '+20',
+        phone: phone.trim(),
+        email: email.trim(),
+        password,
+      });
+      const token = resp?.token || resp?.data?.token || resp?.access_token || resp?.data?.access_token;
+      if (token) {
+        await saveToken(token); // updates context → AuthGuard auto-redirects
+      } else {
+        router.replace('/(tabs)');
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Failed to sign up');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -107,6 +139,13 @@ export default function SignUpScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Phone</Text>
             <View style={styles.inputContainer}>
+              <TextInput
+                style={[styles.input, { flexBasis: 70, flexGrow: 0 }]}
+                placeholder="+20"
+                placeholderTextColor={AppColors.textMuted}
+                value={countryCode}
+                onChangeText={setCountryCode}
+              />
               <Ionicons name="call-outline" size={20} color={AppColors.textMuted} />
               <TextInput
                 style={styles.input}
@@ -171,8 +210,12 @@ export default function SignUpScreen() {
             onPress={handleSignUp}
             activeOpacity={0.8}
           >
-            <Text style={styles.signUpButtonText}>Create Account</Text>
+            <Text style={styles.signUpButtonText}>{loading ? 'Creating...' : 'Create Account'}</Text>
           </TouchableOpacity>
+
+          {error && (
+            <Text style={{ color: AppColors.error, textAlign: 'center', marginBottom: Spacing.lg }}>{error}</Text>
+          )}
 
           {/* Divider */}
           <View style={styles.divider}>

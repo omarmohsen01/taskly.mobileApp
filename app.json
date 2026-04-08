@@ -38,8 +38,12 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
+    "extra": {
+      "apiBaseUrl": "http://127.0.0.1:8000/api/"
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

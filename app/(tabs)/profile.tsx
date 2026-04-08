@@ -8,10 +8,11 @@ import {
   Image,
   StatusBar,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { currentUser, taskProgress } from '@/constants/dummyData';
+import { useAuth } from '@/lib/auth-store';
+import { signOut } from '@/lib/api';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -26,11 +27,16 @@ const menuItems: { icon: IoniconsName; label: string; subtitle?: string }[] = [
 ];
 
 export default function ProfileScreen() {
-  const router = useRouter();
+  const { saveToken } = useAuth();
 
-  const handleLogout = () => {
-    // TODO: Replace with API call
-    router.replace('/(auth)/welcome');
+  const handleLogout = async () => {
+    try {
+      await signOut(); // calls API + clears token in storage
+    } catch {
+      // if API fails, still clear token locally
+      await saveToken(null);
+    }
+    // AuthGuard will automatically redirect to /(auth)/welcome
   };
 
   return (

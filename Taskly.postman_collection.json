@@ -1,0 +1,837 @@
+{
+  "info": {
+    "_postman_id": "2c7c2123-3710-4815-bd95-88fe3bc13f5e",
+    "name": "Taskly",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "26867559"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "SignUp",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "first_name",
+                  "value": "omar",
+                  "type": "text",
+                  "uuid": "bbc141f1-3d2d-43d3-88cd-b2ac3a877c99"
+                },
+                {
+                  "key": "last_name",
+                  "value": "mo",
+                  "type": "text",
+                  "uuid": "cf711c30-f17b-44d6-8166-c58a7e2f47a6"
+                },
+                {
+                  "key": "country_code",
+                  "value": "+20",
+                  "type": "text",
+                  "uuid": "96f94e7c-18a1-4fe8-8461-f93ab8f8eb7c"
+                },
+                {
+                  "key": "phone",
+                  "value": "1122968808",
+                  "type": "text",
+                  "uuid": "92964225-d77c-4491-a849-19c69c0aa848"
+                },
+                {
+                  "key": "email",
+                  "value": "omar@ex.com",
+                  "type": "text",
+                  "uuid": "edba9d7d-5e84-4c74-811b-cc5ed339725c"
+                },
+                {
+                  "key": "password",
+                  "value": "12345678",
+                  "type": "text",
+                  "uuid": "d7b885ec-0011-4043-932e-bdec2e092a82"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{localHost}}auth/signup",
+              "host": [
+                "{{localHost}}auth"
+              ],
+              "path": [
+                "signup"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "SignIn",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "email",
+                  "value": "omar@ex.com",
+                  "type": "text",
+                  "uuid": "edba9d7d-5e84-4c74-811b-cc5ed339725c"
+                },
+                {
+                  "key": "password",
+                  "value": "12345678",
+                  "type": "text",
+                  "uuid": "d7b885ec-0011-4043-932e-bdec2e092a82"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{localHost}}auth/signIn",
+              "host": [
+                "{{localHost}}auth"
+              ],
+              "path": [
+                "signIn"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "SignOut",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{localHost}}auth/signout",
+              "host": [
+                "{{localHost}}auth"
+              ],
+              "path": [
+                "signout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Profile",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{localHost}}auth/profile",
+              "host": [
+                "{{localHost}}auth"
+              ],
+              "path": [
+                "profile"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Workspaces",
+      "item": [
+        {
+          "name": "index",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{localHost}}workspaces",
+              "host": [
+                "{{localHost}}workspaces"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Store",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "omar workspace's",
+                  "type": "text",
+                  "uuid": "a3214498-f0c7-4fef-8eed-5e681d03f74d"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{localHost}}workspaces",
+              "host": [
+                "{{localHost}}workspaces"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Spaces",
+      "item": [
+        {
+          "name": "index",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{localHost}}spaces",
+              "host": [
+                "{{localHost}}spaces"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Store",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "omar workspace's",
+                  "type": "text",
+                  "uuid": "a3214498-f0c7-4fef-8eed-5e681d03f74d"
+                },
+                {
+                  "key": "description",
+                  "value": "omar space's",
+                  "type": "text",
+                  "uuid": "b2e0c75d-8e83-4cd7-ab64-b16f1492952a"
+                },
+                {
+                  "key": "workspace_id",
+                  "value": "1",
+                  "type": "text",
+                  "uuid": "dd097ae3-b58e-4233-a289-f74170181cee"
+                },
+                {
+                  "key": "users[0]",
+                  "value": "1",
+                  "type": "text",
+                  "uuid": "2116e396-c891-4624-944e-e71d863750b2"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{localHost}}spaces",
+              "host": [
+                "{{localHost}}spaces"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Projects/Folders",
+      "item": [
+        {
+          "name": "index",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{localHost}}projects",
+              "host": [
+                "{{localHost}}projects"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Store",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "omar workspace's",
+                  "type": "text",
+                  "uuid": "a3214498-f0c7-4fef-8eed-5e681d03f74d"
+                },
+                {
+                  "key": "description",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "36fba9a6-4e61-40e9-849f-8b3500d022a1"
+                },
+                {
+                  "key": "access_mode",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "15c39d95-38c6-41a3-9893-1efa5ea8d3e6"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "9cb2cf87-d7a1-4530-9137-66b351c98fac"
+                },
+                {
+                  "key": "start_date",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "33f60917-9777-4f36-8876-78ad6cbb882c"
+                },
+                {
+                  "key": "end_date",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "a0ae1eb7-43c0-43eb-98bd-52f13984bb08"
+                },
+                {
+                  "key": "space_id",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "ca367d5a-f159-45af-8721-ab3bb52187c7"
+                },
+                {
+                  "key": "role_id",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "e10e9f38-7bb5-43da-b179-2c4136499fe4"
+                },
+                {
+                  "key": "users[]",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "67977279-5092-4813-a70b-0a55f5bb52b8"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{localHost}}workspaces",
+              "host": [
+                "{{localHost}}workspaces"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Boards",
+      "item": [
+        {
+          "name": "index",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{localHost}}boards",
+              "host": [
+                "{{localHost}}boards"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Store",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "omar workspace's",
+                  "type": "text",
+                  "uuid": "a3214498-f0c7-4fef-8eed-5e681d03f74d"
+                },
+                {
+                  "key": "type",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "b2e0c75d-8e83-4cd7-ab64-b16f1492952a",
+                  "description": "'kanban', 'list'"
+                },
+                {
+                  "key": "project_id",
+                  "value": "1",
+                  "type": "text",
+                  "uuid": "dd097ae3-b58e-4233-a289-f74170181cee"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{localHost}}boards",
+              "host": [
+                "{{localHost}}boards"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "index",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{localHost}}tasks?board_id",
+              "host": [
+                "{{localHost}}tasks"
+              ],
+              "query": [
+                {
+                  "key": "board_id",
+                  "value": null,
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Store",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "omar workspace's",
+                  "type": "text",
+                  "uuid": "a3214498-f0c7-4fef-8eed-5e681d03f74d"
+                },
+                {
+                  "key": "descriptions",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "b2e0c75d-8e83-4cd7-ab64-b16f1492952a"
+                },
+                {
+                  "key": "priority",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "dd097ae3-b58e-4233-a289-f74170181cee",
+                  "description": "'low', 'medium', 'high', 'urgent'"
+                },
+                {
+                  "key": "start_date",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "14c6b30b-999a-43d3-94e3-446bd56cf65d"
+                },
+                {
+                  "key": "due_date",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "34436dfa-db39-4888-b046-db40dcf53d2f"
+                },
+                {
+                  "key": "position",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "9f3bc0c0-9917-4fea-ad03-e12216b12cec"
+                },
+                {
+                  "key": "board_id",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "48de9d05-eec3-473e-9eb5-12a728e6cb88"
+                },
+                {
+                  "key": "board_column_id",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "a71221e4-2485-4462-8fe6-3b6c693575c1"
+                },
+                {
+                  "key": "parent_id",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "f10759bf-562f-4eaa-9740-e7f5c3ee3e99"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{localHost}}tasks",
+              "host": [
+                "{{localHost}}tasks"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Show",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{localHost}}tasks/3",
+              "host": [
+                "{{localHost}}tasks"
+              ],
+              "path": [
+                "3"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Store Comment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "task_id",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "07ec017c-9de7-4a41-a542-94349f2d61b2"
+                },
+                {
+                  "key": "comments",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "d10e8be4-c115-4959-aa98-d5cc9bed7fc8"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{localHost}}/comments",
+              "host": [
+                "{{localHost}}"
+              ],
+              "path": [
+                "comments"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "localHost",
+      "value": ""
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "default"
+    }
+  ]
+}

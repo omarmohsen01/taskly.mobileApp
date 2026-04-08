@@ -1,9 +1,10 @@
-import { currentUser } from '@/constants/dummyData';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
+import { createWorkspace } from '@/lib/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
@@ -16,13 +17,22 @@ import {
 
 export default function CreateWorkspaceScreen() {
   const router = useRouter();
-  const [workspaceName, setWorkspaceName] = useState(`${currentUser.first_name}'s Workspace`);
+  const [workspaceName, setWorkspaceName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleCreate = () => {
-    if (workspaceName.trim()) {
-      // In production, this would call the API to create the workspace
-      // For now, navigate back to the home/tabs
+  const handleCreate = async () => {
+    if (!workspaceName.trim() || loading) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await createWorkspace(workspaceName.trim());
+      // Go back to home; index.tsx will re-fetch workspaces
       router.replace('/(tabs)');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to create workspace');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -63,7 +73,7 @@ export default function CreateWorkspaceScreen() {
               onChangeText={setWorkspaceName}
               placeholder="Enter workspace name"
               placeholderTextColor={AppColors.textMuted}
-              autoFocus={false}
+              autoFocus
               selectionColor={AppColors.accent}
             />
             {workspaceName.length > 0 && (
@@ -75,6 +85,9 @@ export default function CreateWorkspaceScreen() {
               </TouchableOpacity>
             )}
           </View>
+          {error && (
+            <Text style={styles.errorText}>{error}</Text>
+          )}
         </View>
 
         {/* Spacer */}
@@ -85,18 +98,22 @@ export default function CreateWorkspaceScreen() {
           <TouchableOpacity
             style={[
               styles.createBtn,
-              !workspaceName.trim() && styles.createBtnDisabled,
+              (!workspaceName.trim() || loading) && styles.createBtnDisabled,
             ]}
             activeOpacity={0.85}
             onPress={handleCreate}
-            disabled={!workspaceName.trim()}
+            disabled={!workspaceName.trim() || loading}
           >
-            <Text style={[
-              styles.createBtnText,
-              !workspaceName.trim() && styles.createBtnTextDisabled,
-            ]}>
-              Create Workspace
-            </Text>
+            {loading ? (
+              <ActivityIndicator color={AppColors.white} />
+            ) : (
+              <Text style={[
+                styles.createBtnText,
+                !workspaceName.trim() && styles.createBtnTextDisabled,
+              ]}>
+                Create Workspace
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -171,6 +188,11 @@ const styles = StyleSheet.create({
   },
   clearBtn: {
     padding: Spacing.xs,
+  },
+  errorText: {
+    color: AppColors.error,
+    fontSize: 13,
+    marginTop: Spacing.sm,
   },
   bottomBar: {
     paddingBottom: 40,
