@@ -81,7 +81,7 @@ export async function signUp(payload: {
   email: string;
   password: string;
 }) {
-  const resp = await apiPostForm('auth/signup', payload);
+  const resp = await apiPostForm('auth/signUp', payload);
   const token = resp?.token || resp?.data?.token || resp?.access_token || resp?.data?.access_token;
   if (token) await setToken(token);
   return resp;
@@ -106,9 +106,19 @@ export async function fetchStatistics(workspaceId: number | string, filter: Stat
 }
 
 export async function signOut() {
-  try {
-    await apiPostForm('auth/signout', {});
-  } finally {
-    await setToken(null);
+  const token = getToken();
+  
+  // Clear the local token instantly for a responsive UI
+  await setToken(null);
+  
+  // Call the signout endpoint in the background with the captured token
+  if (token) {
+    fetch(getBaseUrl() + 'auth/signout', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    }).catch(e => console.error('Background signout error:', e));
   }
 }

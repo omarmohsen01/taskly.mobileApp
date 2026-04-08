@@ -26,10 +26,12 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 interface Workspace {
   id: number;
   name: string;
-  members_count?: number;
+  users_count?: number;
+  members_count?: number; // fallback
+  is_owner?: boolean;
   role?: string;
   owner?: { first_name: string; last_name: string };
-  members?: number; // legacy mockup field
+  members?: any[]; 
 }
 
 interface Statistics {
@@ -604,7 +606,7 @@ export default function HomeScreen() {
                             {ws.name}
                           </Text>
                           <Text style={styles.workspaceItemMeta}>
-                            {ws.members_count ?? ws.members ?? 0} members • {ws.role ?? 'Member'}
+                            {ws.users_count ?? ws.members_count ?? 0} members • {ws.is_owner ? 'Owner' : 'Member'}
                           </Text>
                         </View>
                       </View>

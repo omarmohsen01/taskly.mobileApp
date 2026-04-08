@@ -30,13 +30,11 @@ export default function ProfileScreen() {
   const { saveToken } = useAuth();
 
   const handleLogout = async () => {
-    try {
-      await signOut(); // calls API + clears token in storage
-    } catch {
-      // if API fails, still clear token locally
-      await saveToken(null);
-    }
-    // AuthGuard will automatically redirect to /(auth)/welcome
+    // Optimistically clear the token in React state to trigger instant redirect
+    await saveToken(null);
+    // Call the signout API in the background (already optimized in api.ts)
+    signOut().catch(e => console.error('Signout error:', e));
+    // Final redirect occurs automatically via AuthGuard
   };
 
   return (
