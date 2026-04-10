@@ -95,6 +95,10 @@ export async function fetchWorkspaces() {
   return apiGet('workspaces');
 }
 
+export async function fetchSpaces(workspaceId: number | string) {
+  return apiGet(`spaces?workspace_id=${workspaceId}`);
+}
+
 export async function createWorkspace(name: string) {
   return apiPostForm('workspaces', { name });
 }

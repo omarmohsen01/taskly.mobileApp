@@ -1,6 +1,6 @@
 import { currentUser, folders, labels, lists, spaces, tasks, users } from '@/constants/dummyData';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
-import { fetchStatistics, fetchWorkspaces, StatFilter } from '@/lib/api';
+import { fetchStatistics, fetchWorkspaces, fetchSpaces, StatFilter } from '@/lib/api';
 import { useAuth } from '@/lib/auth-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -32,6 +32,26 @@ interface Workspace {
   role?: string;
   owner?: { first_name: string; last_name: string };
   members?: any[]; 
+}
+
+interface Space {
+  id: number;
+  name: string;
+  description?: string;
+  projects?: Project[];
+}
+
+interface Project {
+  id: number;
+  name: string;
+  description?: string;
+  boards?: Board[];
+}
+
+interface Board {
+  id: number;
+  name: string;
+  type: string;
 }
 
 interface Statistics {
@@ -92,8 +112,9 @@ export default function HomeScreen() {
   
   // Workspace state
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [wsLoading, setWsLoading] = useState(true);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<number | null>(null);
+  const [spacesList, setSpacesList] = useState<Space[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
 
   // Statistics state
@@ -126,6 +147,16 @@ export default function HomeScreen() {
     }
   }, [selectedWorkspaceId]);
 
+  const loadSpaces = useCallback(async (workspaceId: number) => {
+    try {
+      const resp = await fetchSpaces(workspaceId);
+      const list = resp?.data ?? resp?.spaces ?? (Array.isArray(resp) ? resp : []);
+      setSpacesList(list);
+    } catch (e) {
+      console.error('Spaces load error:', e);
+    }
+  }, []);
+
   const loadStats = useCallback(async (workspaceId: number | null, filter: StatFilter) => {
     if (workspaceId === null) return;
     setStatsLoading(true);
@@ -145,9 +176,9 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!token) return;
     (async () => {
-      setWsLoading(true);
+      setIsLoading(true);
       await loadWorkspaces();
-      setWsLoading(false);
+      setIsLoading(false);
     })();
   }, [token]);
 
@@ -155,6 +186,7 @@ export default function HomeScreen() {
     if (!token || selectedWorkspaceId === null) return;
     const filter = tabToFilterMap[myTaskTabs[activeTab]] || 'all';
     loadStats(selectedWorkspaceId, filter);
+    loadSpaces(selectedWorkspaceId);
   }, [token, activeTab, selectedWorkspaceId]);
 
   const onRefresh = useCallback(async () => {
@@ -162,7 +194,8 @@ export default function HomeScreen() {
     if (selectedWorkspaceId !== null) {
       await Promise.all([
         loadWorkspaces(),
-        loadStats(selectedWorkspaceId, tabToFilterMap[myTaskTabs[activeTab]] || 'all')
+        loadStats(selectedWorkspaceId, tabToFilterMap[myTaskTabs[activeTab]] || 'all'),
+        loadSpaces(selectedWorkspaceId)
       ]);
     } else {
       await loadWorkspaces();
@@ -182,10 +215,10 @@ export default function HomeScreen() {
 
   const currentWorkspace = workspaces.find(w => w.id === selectedWorkspaceId) || workspaces[0];
 
-  if (wsLoading) {
+  if (isLoading) {
     return (
       <View style={styles.centerScreen}>
-        <ActivityIndicator size="large" color={AppColors.accent} />
+        <ActivityIndicator color={AppColors.accent} size="large" />
       </View>
     );
   }
@@ -320,103 +353,86 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               {/* Dynamic Spaces */}
-              {spaces
-                .filter(s => s.workspace_id === selectedWorkspaceId)
-                .map((space) => {
-                  const isSpaceOpen = !!expandedSpaces[space.id];
-                  const spaceFolders = folders.filter(f => f.space_id === space.id);
-                  const spaceLists = lists.filter(l => l.space_id === space.id && l.folder_id === null);
+              {spacesList.map((space) => {
+                const isSpaceOpen = !!expandedSpaces[space.id];
+                const projects = space.projects || [];
 
-                  return (
-                    <View key={space.id}>
-                      <TouchableOpacity
-                        style={styles.spacesItem}
-                        activeOpacity={0.7}
-                        onPress={() => toggleSpace(space.id)}
-                      >
-                        <View style={styles.spacesItemLeft}>
-                          <View style={[styles.spacesItemBadge, { backgroundColor: space.color || AppColors.textMuted }]}>
-                            <Text style={styles.spacesItemBadgeText}>
-                              {space.name.charAt(0).toLowerCase()}
-                            </Text>
-                          </View>
-                          <Text style={styles.spacesItemText}>{space.name}</Text>
+                return (
+                  <View key={space.id}>
+                    <TouchableOpacity
+                      style={styles.spacesItem}
+                      activeOpacity={0.7}
+                      onPress={() => toggleSpace(space.id)}
+                    >
+                      <View style={styles.spacesItemLeft}>
+                        <View style={[styles.spacesItemBadge, { backgroundColor: AppColors.accent }]}>
+                          <Text style={styles.spacesItemBadgeText}>
+                            {space.name.charAt(0).toLowerCase()}
+                          </Text>
                         </View>
-                        <View style={styles.spaceActions}>
-                          <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={() => router.push({ pathname: '/create-folder', params: { spaceId: space.id, spaceName: space.name } })}
-                          >
-                            <Ionicons name="add" size={18} color={AppColors.textMuted} />
-                          </TouchableOpacity>
-                          <Ionicons name="expand-outline" size={16} color={AppColors.textMuted} />
-                          <Ionicons
-                            name={isSpaceOpen ? 'chevron-down' : 'chevron-forward'}
-                            size={16}
-                            color={AppColors.textMuted}
-                          />
-                        </View>
-                      </TouchableOpacity>
+                        <Text style={styles.spacesItemText}>{space.name}</Text>
+                      </View>
+                      <View style={styles.spaceActions}>
+                        <TouchableOpacity activeOpacity={0.7}>
+                          <Ionicons name="add" size={18} color={AppColors.textMuted} />
+                        </TouchableOpacity>
+                        <Ionicons name="expand-outline" size={16} color={AppColors.textMuted} />
+                        <Ionicons
+                          name={isSpaceOpen ? 'chevron-down' : 'chevron-forward'}
+                          size={16}
+                          color={AppColors.textMuted}
+                        />
+                      </View>
+                    </TouchableOpacity>
 
-                      {isSpaceOpen && (
-                        <View style={styles.nestedContainer}>
-                          {spaceFolders.map(folder => {
-                            const isFolderOpen = !!expandedFolders[folder.id];
-                            const folderLists = lists.filter(l => l.folder_id === folder.id);
+                    {isSpaceOpen && (
+                      <View style={styles.nestedContainer}>
+                        {projects.map(project => {
+                          const isProjectOpen = !!expandedFolders[project.id];
+                          const boards = project.boards || [];
 
-                            return (
-                              <View key={`f-${folder.id}`}>
-                                <TouchableOpacity
-                                  style={styles.folderItem}
-                                  activeOpacity={0.7}
-                                  onPress={() => toggleFolder(folder.id)}
-                                >
-                                  <View style={styles.spacesItemLeft}>
-                                    <Ionicons name="folder-outline" size={18} color={AppColors.textMuted} />
-                                    <Text style={styles.folderText}>{folder.name}</Text>
-                                  </View>
-                                  <View style={styles.spaceActions}>
-                                    <TouchableOpacity activeOpacity={0.7}>
-                                      <Ionicons name="add" size={16} color={AppColors.textMuted} />
-                                    </TouchableOpacity>
-                                    <Ionicons name="expand-outline" size={14} color={AppColors.textMuted} />
-                                    <Ionicons
-                                      name={isFolderOpen ? 'chevron-down' : 'chevron-forward'}
-                                      size={14}
-                                      color={AppColors.textMuted}
-                                    />
-                                  </View>
-                                </TouchableOpacity>
-
-                                {isFolderOpen && folderLists.map(list => (
-                                  <TouchableOpacity
-                                    key={`fl-${list.id}`}
-                                    style={styles.listItem}
-                                    activeOpacity={0.7}
-                                  >
-                                    <Ionicons name="list-outline" size={16} color={AppColors.textMuted} />
-                                    <Text style={styles.listText}>{list.name}</Text>
+                          return (
+                            <View key={`p-${project.id}`}>
+                              <TouchableOpacity
+                                style={styles.folderItem}
+                                activeOpacity={0.7}
+                                onPress={() => toggleFolder(project.id)}
+                              >
+                                <View style={styles.spacesItemLeft}>
+                                  <Ionicons name="folder-outline" size={18} color={AppColors.textMuted} />
+                                  <Text style={styles.folderText}>{project.name}</Text>
+                                </View>
+                                <View style={styles.spaceActions}>
+                                  <TouchableOpacity activeOpacity={0.7}>
+                                    <Ionicons name="add" size={16} color={AppColors.textMuted} />
                                   </TouchableOpacity>
-                                ))}
-                              </View>
-                            );
-                          })}
+                                  <Ionicons name="expand-outline" size={14} color={AppColors.textMuted} />
+                                  <Ionicons
+                                    name={isProjectOpen ? 'chevron-down' : 'chevron-forward'}
+                                    size={14}
+                                    color={AppColors.textMuted}
+                                  />
+                                </View>
+                              </TouchableOpacity>
 
-                          {spaceLists.map(list => (
-                            <TouchableOpacity
-                              key={`sl-${list.id}`}
-                              style={styles.spaceListItem}
-                              activeOpacity={0.7}
-                            >
-                              <Ionicons name="list-outline" size={16} color={AppColors.textMuted} />
-                              <Text style={styles.listText}>{list.name}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
+                              {isProjectOpen && boards.map(board => (
+                                <TouchableOpacity
+                                  key={`b-${board.id}`}
+                                  style={styles.listItem}
+                                  activeOpacity={0.7}
+                                >
+                                  <Ionicons name="list-outline" size={16} color={AppColors.textMuted} />
+                                  <Text style={styles.listText}>{board.name}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
             </View>
           )}
         </View>
