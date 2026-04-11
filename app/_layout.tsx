@@ -5,6 +5,24 @@ import 'react-native-reanimated';
 import { useEffect } from 'react';
 import { AppColors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth-store';
+import Toast, { BaseToastProps } from 'react-native-toast-message';
+import { View, Text, StyleSheet } from 'react-native';
+import { BorderRadius, Spacing } from '@/constants/theme';
+
+const toastConfig = {
+  success: (props: BaseToastProps) => (
+    <View style={styles.toastContainer}>
+      <Text style={styles.toastTitle}>{props.text1}</Text>
+      {props.text2 ? <Text style={styles.toastDesc}>{props.text2}</Text> : null}
+    </View>
+  ),
+  error: (props: BaseToastProps) => (
+    <View style={[styles.toastContainer, { borderColor: AppColors.error }]}>
+      <Text style={styles.toastTitle}>{props.text1}</Text>
+      {props.text2 ? <Text style={styles.toastDesc}>{props.text2}</Text> : null}
+    </View>
+  )
+};
 
 // Custom dark theme matching our design
 const CustomDarkTheme = {
@@ -109,7 +127,35 @@ export default function RootLayout() {
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         </Stack>
         <StatusBar style="light" />
+        <Toast config={toastConfig} />
       </ThemeProvider>
     </AuthProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  toastContainer: {
+    width: '90%',
+    backgroundColor: AppColors.cardBackground,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    padding: Spacing.lg,
+    flexDirection: 'column',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  toastTitle: {
+    color: AppColors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  toastDesc: {
+    color: AppColors.textMuted,
+    fontSize: 13,
+    marginTop: Spacing.xs,
+  }
+});

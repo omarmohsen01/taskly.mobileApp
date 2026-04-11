@@ -1,0 +1,97 @@
+{
+  "id": 1,
+  "name": "Development",
+  "description": "Development and coding projects",
+  "workspace": {
+    "id": 1,
+    "name": "Acme Corporation",
+    "owner": null,
+    "created_at": "2026-04-05 00:47:51",
+    "updated_at": "2026-04-05 00:47:51"
+  },
+  "projects": [
+    {
+      "id": 1,
+      "name": "Website Redesign",
+      "description": "Complete redesign of company website",
+      "access_mode": "inherit",
+      "status": 1,
+      "start_date": "2026-02-05",
+      "end_date": "2026-08-05",
+      "boards": [
+        {
+          "id": 1,
+          "name": "Main Board",
+          "type": "kanban",
+          "created_at": "2026-04-05 00:47:51",
+          "updated_at": "2026-04-05 00:47:51"
+        },
+        {
+          "id": 2,
+          "name": "Backlog",
+          "type": "list",
+          "created_at": "2026-04-05 00:47:51",
+          "updated_at": "2026-04-05 00:47:51"
+        }
+      ],
+      "created_at": "2026-04-05 00:47:51",
+      "updated_at": "2026-04-05 00:47:51"
+    },
+    {
+      "id": 2,
+      "name": "Mobile App Development",
+      "description": "Development of mobile application",
+      "access_mode": "restricted",
+      "status": 1,
+      "start_date": "2026-03-05",
+      "end_date": "2026-10-05",
+      "boards": [
+        {
+          "id": 3,
+          "name": "Main Board",
+          "type": "kanban",
+          "created_at": "2026-04-05 00:47:51",
+          "updated_at": "2026-04-05 00:47:51"
+        },
+        {
+          "id": 4,
+          "name": "Backlog",
+          "type": "list",
+          "created_at": "2026-04-05 00:47:51",
+          "updated_at": "2026-04-05 00:47:51"
+        }
+      ],
+      "created_at": "2026-04-05 00:47:51",
+      "updated_at": "2026-04-05 00:47:51"
+    },
+    {
+      "id": 3,
+      "name": "Legacy System Migration",
+      "description": "Migration from old system to new platform",
+      "access_mode": "inherit",
+      "status": 0,
+      "start_date": "2025-04-05",
+      "end_date": "2026-01-05",
+      "boards": [
+        {
+          "id": 5,
+          "name": "Main Board",
+          "type": "kanban",
+          "created_at": "2026-04-05 00:47:51",
+          "updated_at": "2026-04-05 00:47:51"
+        },
+        {
+          "id": 6,
+          "name": "Backlog",
+          "type": "list",
+          "created_at": "2026-04-05 00:47:51",
+          "updated_at": "2026-04-05 00:47:51"
+        }
+      ],
+      "created_at": "2026-04-05 00:47:51",
+      "updated_at": "2026-04-05 00:47:51"
+    }
+  ],
+  "created_at": "2026-04-05 00:47:51",
+  "updated_at": "2026-04-05 00:47:51"
+}

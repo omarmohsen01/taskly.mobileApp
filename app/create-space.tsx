@@ -1,8 +1,10 @@
 import { spaceColors, statusTemplates } from '@/constants/dummyData';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
+import { createSpace, fetchWorkspaces, fetchProfile } from '@/lib/api';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import React, { useState, useEffect } from 'react';
+import Toast from 'react-native-toast-message';
 import {
     Dimensions,
     Modal,
@@ -13,24 +15,93 @@ import {
     TextInput,
     TouchableOpacity,
     TouchableWithoutFeedback,
-    View
+    View,
+    ActivityIndicator
 } from 'react-native';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function CreateSpaceScreen() {
   const router = useRouter();
+  const { workspaceId } = useLocalSearchParams<{ workspaceId: string }>();
+  
   const [spaceName, setSpaceName] = useState('');
+  const [description, setDescription] = useState('');
   const [privacy, setPrivacy] = useState<'workspace' | 'private'>('workspace');
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [selectedStatusTemplate, setSelectedStatusTemplate] = useState('Space Statuses');
 
-  const handleCreate = () => {
-    if (!spaceName.trim()) return;
-    // TODO: API call to create space
-    router.back();
+  // Members state
+  const [members, setMembers] = useState<any[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (workspaceId) {
+      loadMembers();
+    }
+  }, [workspaceId]);
+
+  const loadMembers = async () => {
+    setIsLoadingMembers(true);
+    try {
+      const [wsResp, profResp] = await Promise.all([fetchWorkspaces(), fetchProfile()]);
+      
+      const workspaces = wsResp?.data ?? wsResp?.workspaces ?? (Array.isArray(wsResp) ? wsResp : []);
+      const currentWs = workspaces.find((w: any) => String(w.id) === String(workspaceId));
+      const allMembers = currentWs?.members ?? [];
+      
+      const authUser = profResp?.data ?? profResp ?? {};
+      const authUserId = authUser.id;
+
+      // Filter out the authenticated user
+      const otherMembers = allMembers.filter((m: any) => String(m.id) !== String(authUserId));
+      setMembers(otherMembers);
+    } catch (e) {
+      console.error('Failed to load members:', e);
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  const toggleUser = (userId: number) => {
+    setSelectedUserIds(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId) 
+        : [...prev, userId]
+    );
+  };
+
+  const handleCreate = async () => {
+    if (!spaceName.trim() || !workspaceId) return;
+    
+    setIsSubmitting(true);
+    try {
+      await createSpace({
+        workspace_id: workspaceId,
+        name: spaceName,
+        description: description,
+        users: selectedUserIds
+      });
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Space created successfully!',
+      });
+      router.back();
+    } catch (e: any) {
+      console.error('Create space error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: e.message || 'Failed to create space',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -43,10 +114,14 @@ export default function CreateSpaceScreen() {
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Space</Text>
-        <TouchableOpacity onPress={handleCreate}>
-          <Text style={[styles.createText, !spaceName.trim() && styles.createTextDisabled]}>
-            Create
-          </Text>
+        <TouchableOpacity onPress={handleCreate} disabled={isSubmitting || !spaceName.trim()}>
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color={AppColors.accent} />
+          ) : (
+            <Text style={[styles.createText, !spaceName.trim() && styles.createTextDisabled]}>
+              Create
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
       <View style={styles.headerDivider} />
@@ -61,6 +136,19 @@ export default function CreateSpaceScreen() {
             placeholderTextColor={AppColors.textMuted}
             value={spaceName}
             onChangeText={setSpaceName}
+          />
+        </View>
+
+        {/* Description */}
+        <Text style={styles.sectionLabel}>Description</Text>
+        <View style={styles.inputWrap}>
+          <TextInput
+            style={[styles.input, { minHeight: 60, textAlignVertical: 'top' }]}
+            placeholder="Space description"
+            placeholderTextColor={AppColors.textMuted}
+            value={description}
+            onChangeText={setDescription}
+            multiline
           />
         </View>
 
@@ -84,6 +172,42 @@ export default function CreateSpaceScreen() {
             <Text style={[styles.privacyText, privacy === 'private' && styles.privacyTextActive]}>Private</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Members */}
+        <Text style={styles.sectionLabel}>Add Members</Text>
+        {isLoadingMembers ? (
+          <ActivityIndicator color={AppColors.accent} style={{ marginVertical: 10 }} />
+        ) : members.length === 0 ? (
+          <Text style={{ color: AppColors.textMuted, fontSize: 13, marginLeft: 5 }}>No other members in this workspace</Text>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.membersRow}>
+            {members.map((member) => {
+              const isSelected = selectedUserIds.includes(member.id);
+              return (
+                <TouchableOpacity
+                  key={member.id}
+                  style={[styles.memberCard, isSelected && styles.memberCardSelected]}
+                  activeOpacity={0.7}
+                  onPress={() => toggleUser(member.id)}
+                >
+                  <View style={styles.memberAvatarWrap}>
+                    <Text style={styles.memberAvatarText}>
+                      {(member.first_name?.[0] || member.name?.[0] || '?').toUpperCase()}
+                    </Text>
+                    {isSelected && (
+                      <View style={styles.memberCheckBadge}>
+                        <Ionicons name="checkmark" size={10} color={AppColors.white} />
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.memberName, isSelected && styles.memberNameSelected]} numberOfLines={1}>
+                    {member.first_name || member.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* Space settings */}
         <Text style={styles.sectionLabel}>Space settings</Text>
@@ -497,5 +621,60 @@ const styles = StyleSheet.create({
   colorCircleSelected: {
     borderWidth: 3,
     borderColor: AppColors.white,
+  },
+  membersRow: {
+    paddingVertical: Spacing.md,
+    gap: Spacing.md,
+  },
+  memberCard: {
+    backgroundColor: AppColors.cardBackground,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    padding: Spacing.md,
+    alignItems: 'center',
+    width: 80,
+    gap: Spacing.xs,
+  },
+  memberCardSelected: {
+    borderColor: AppColors.accent,
+    backgroundColor: AppColors.border,
+  },
+  memberAvatarWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: AppColors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  memberAvatarText: {
+    color: AppColors.white,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  memberCheckBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: AppColors.accent,
+    borderWidth: 2,
+    borderColor: AppColors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  memberName: {
+    color: AppColors.textMuted,
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  memberNameSelected: {
+    color: AppColors.white,
+    fontWeight: '700',
   },
 });

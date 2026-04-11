@@ -3,6 +3,7 @@ import { createWorkspace } from '@/lib/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
+import Toast from 'react-native-toast-message';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -27,10 +28,19 @@ export default function CreateWorkspaceScreen() {
     setLoading(true);
     try {
       await createWorkspace(workspaceName.trim());
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Workspace created successfully!',
+      });
       // Go back to home; index.tsx will re-fetch workspaces
       router.replace('/(tabs)');
     } catch (e: any) {
-      setError(e?.message || 'Failed to create workspace');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: e?.message || 'Failed to create workspace',
+      });
     } finally {
       setLoading(false);
     }

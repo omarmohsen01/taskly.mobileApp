@@ -3,7 +3,7 @@ import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { fetchStatistics, fetchWorkspaces, fetchSpaces, StatFilter } from '@/lib/api';
 import { useAuth } from '@/lib/auth-store';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -182,12 +182,15 @@ export default function HomeScreen() {
     })();
   }, [token]);
 
-  useEffect(() => {
-    if (!token || selectedWorkspaceId === null) return;
-    const filter = tabToFilterMap[myTaskTabs[activeTab]] || 'all';
-    loadStats(selectedWorkspaceId, filter);
-    loadSpaces(selectedWorkspaceId);
-  }, [token, activeTab, selectedWorkspaceId]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!token || selectedWorkspaceId === null) return;
+      const filter = tabToFilterMap[myTaskTabs[activeTab]] || 'all';
+      loadStats(selectedWorkspaceId, filter);
+      loadSpaces(selectedWorkspaceId);
+      loadWorkspaces();
+    }, [token, activeTab, selectedWorkspaceId])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -316,7 +319,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 style={styles.spacesAddBtn}
                 activeOpacity={0.7}
-                onPress={() => router.push('/create-space')}
+                onPress={() => router.push({ pathname: '/create-space', params: { workspaceId: selectedWorkspaceId } })}
               >
                 <Ionicons name="add" size={18} color={AppColors.textMuted} />
               </TouchableOpacity>
@@ -373,7 +376,17 @@ export default function HomeScreen() {
                         <Text style={styles.spacesItemText}>{space.name}</Text>
                       </View>
                       <View style={styles.spaceActions}>
-                        <TouchableOpacity activeOpacity={0.7}>
+                        <TouchableOpacity 
+                          activeOpacity={0.7}
+                          onPress={() => router.push({ 
+                            pathname: '/create-project', 
+                            params: { 
+                              spaceId: space.id, 
+                              spaceName: space.name,
+                              workspaceId: selectedWorkspaceId
+                            } 
+                          })}
+                        >
                           <Ionicons name="add" size={18} color={AppColors.textMuted} />
                         </TouchableOpacity>
                         <Ionicons name="expand-outline" size={16} color={AppColors.textMuted} />

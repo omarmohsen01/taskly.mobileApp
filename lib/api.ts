@@ -95,12 +95,73 @@ export async function fetchWorkspaces() {
   return apiGet('workspaces');
 }
 
+export async function fetchRoles() {
+  return apiGet('roles');
+}
+
 export async function fetchSpaces(workspaceId: number | string) {
   return apiGet(`spaces?workspace_id=${workspaceId}`);
 }
 
 export async function createWorkspace(name: string) {
   return apiPostForm('workspaces', { name });
+}
+
+export async function createSpace(payload: {
+  workspace_id: string | number;
+  name: string;
+  description: string;
+  users?: number[];
+}) {
+  // Convert users array to users[0], users[1], etc. if needed by FormData
+  // But usually apiPostForm can handle flat objects. 
+  // If the backend expects users[0], users[1], we might need to adjust apiPostForm or the payload.
+  // Looking at Postman: "key": "users[0]". 
+  
+  const data: Record<string, string> = {
+    workspace_id: String(payload.workspace_id),
+    name: payload.name,
+    description: payload.description,
+  };
+  
+  if (payload.users && payload.users.length > 0) {
+    payload.users.forEach((id, index) => {
+      data[`users[${index}]`] = String(id);
+    });
+  }
+
+  return apiPostForm('spaces', data);
+}
+
+export async function createProject(payload: {
+  space_id: string | number;
+  name: string;
+  description: string;
+  status: string | number;
+  start_date?: string;
+  end_date?: string;
+  access_mode: 'inherit' | 'restricted';
+  users?: { user_id: number; role_id: number }[];
+}) {
+  const data: Record<string, string> = {
+    space_id: String(payload.space_id),
+    name: payload.name,
+    description: payload.description,
+    status: String(payload.status),
+    access_mode: payload.access_mode,
+  };
+  
+  if (payload.start_date) data.start_date = payload.start_date;
+  if (payload.end_date) data.end_date = payload.end_date;
+
+  if (payload.users && payload.users.length > 0) {
+    payload.users.forEach((u, index) => {
+      data[`users[${index}][user_id]`] = String(u.user_id);
+      data[`users[${index}][role_id]`] = String(u.role_id);
+    });
+  }
+
+  return apiPostForm('projects', data);
 }
 
 export type StatFilter = 'all' | 'today' | 'completed' | 'in_progress';
