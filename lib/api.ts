@@ -164,6 +164,19 @@ export async function createProject(payload: {
   return apiPostForm('projects', data);
 }
 
+export async function createBoard(payload: {
+  project_id: string | number;
+  name: string;
+  type: 'kanban' | 'list';
+}) {
+  const data: Record<string, string> = {
+    project_id: String(payload.project_id),
+    name: payload.name,
+    type: payload.type,
+  };
+  return apiPostForm('boards', data);
+}
+
 export type StatFilter = 'all' | 'today' | 'completed' | 'in_progress';
 
 export async function fetchStatistics(workspaceId: number | string, filter: StatFilter = 'all') {

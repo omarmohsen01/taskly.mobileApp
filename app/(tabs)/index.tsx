@@ -416,7 +416,13 @@ export default function HomeScreen() {
                                   <Text style={styles.folderText}>{project.name}</Text>
                                 </View>
                                 <View style={styles.spaceActions}>
-                                  <TouchableOpacity activeOpacity={0.7}>
+                                  <TouchableOpacity 
+                                    activeOpacity={0.7}
+                                    onPress={() => router.push({
+                                      pathname: '/create-board',
+                                      params: { projectId: project.id, projectName: project.name }
+                                    })}
+                                  >
                                     <Ionicons name="add" size={16} color={AppColors.textMuted} />
                                   </TouchableOpacity>
                                   <Ionicons name="expand-outline" size={14} color={AppColors.textMuted} />

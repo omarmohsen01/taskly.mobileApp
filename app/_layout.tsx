@@ -118,6 +118,13 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="create-board"
+            options={{
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+            }}
+          />
+          <Stack.Screen
             name="create-folder"
             options={{
               presentation: 'modal',
