@@ -33,6 +33,7 @@ export default function BoardScreen() {
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
+  const [activeSheet, setActiveSheet] = useState<null | 'status' | 'assignee' | 'tags' | 'priority' | 'attachment'>(null);
   
   const [columns, setColumns] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -250,7 +251,7 @@ export default function BoardScreen() {
             />
 
             {/* Meta Rows */}
-            <View style={styles.metaRow}>
+            <TouchableOpacity style={styles.metaRow} activeOpacity={0.7} onPress={() => setActiveSheet('assignee')}>
                <View style={styles.metaIconWrap}>
                  <Ionicons name="person-outline" size={20} color={AppColors.textMuted} />
                </View>
@@ -261,7 +262,7 @@ export default function BoardScreen() {
                <View style={[styles.avatarCircle, { width: 24, height: 24, borderRadius: 12 }]}>
                  <Text style={[styles.avatarText, { fontSize: 8 }]}>OM</Text>
                </View>
-            </View>
+            </TouchableOpacity>
 
             <View style={[styles.metaRow, { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }]}>
                <View style={styles.metaIconWrap}>
@@ -273,13 +274,19 @@ export default function BoardScreen() {
             {/* Action Bar */}
             <View style={styles.modalActionBar}>
                <View style={{flexDirection: 'row', alignItems: 'center', gap: 12}}>
-                  <TouchableOpacity style={styles.actionPill}>
+                  <TouchableOpacity style={styles.actionPill} onPress={() => setActiveSheet('status')}>
                      <Ionicons name="ellipse-outline" size={14} color={AppColors.textMuted} style={{marginRight: 4}}/>
                      <Text style={styles.actionPillText}>TO DO</Text>
                   </TouchableOpacity>
-                  <Ionicons name="flag-outline" size={20} color={AppColors.textMuted} />
-                  <Ionicons name="create-outline" size={20} color={AppColors.textMuted} />
-                  <Ionicons name="pricetag-outline" size={20} color={AppColors.textMuted} />
+                  <TouchableOpacity onPress={() => setActiveSheet('priority')}>
+                     <Ionicons name="flag-outline" size={20} color={AppColors.textMuted} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setActiveSheet('attachment')}>
+                     <Ionicons name="attach-outline" size={24} color={AppColors.textMuted} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setActiveSheet('tags')}>
+                     <Ionicons name="pricetag-outline" size={20} color={AppColors.textMuted} />
+                  </TouchableOpacity>
                </View>
                
                <TouchableOpacity 
@@ -297,6 +304,194 @@ export default function BoardScreen() {
             <View style={{ height: 40 }} />
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Sub-modals for context actions */}
+      <Modal visible={!!activeSheet} animationType="slide" transparent>
+         <View style={styles.modalOverlay}>
+            <TouchableOpacity style={{ flex: 1 }} onPress={() => setActiveSheet(null)} />
+            <View style={[styles.modalContent, styles.subSheetContent]}>
+               {/* ---------------- PRIORITY SHEET ---------------- */}
+               {activeSheet === 'priority' && (
+                  <View>
+                     <View style={styles.subSheetHeader}>
+                        <View style={{width: 32}} />
+                        <Text style={styles.headerTitle}>Priority</Text>
+                        <TouchableOpacity style={styles.modalIconBtn} onPress={() => setActiveSheet(null)}>
+                           <Ionicons name="close" size={20} color={AppColors.textMuted} />
+                        </TouchableOpacity>
+                     </View>
+                     <View style={styles.subSheetBody}>
+                        <TouchableOpacity style={styles.iconRowItem}>
+                           <Ionicons name="flag" size={20} color="#ef4444" style={{marginRight: 12}} />
+                           <Text style={styles.metaValue}>Urgent</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.iconRowItem}>
+                           <Ionicons name="flag" size={20} color="#f59e0b" style={{marginRight: 12}} />
+                           <Text style={styles.metaValue}>High</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.iconRowItem}>
+                           <Ionicons name="flag" size={20} color="#3b82f6" style={{marginRight: 12}} />
+                           <Text style={styles.metaValue}>Normal</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.iconRowItem}>
+                           <Ionicons name="flag" size={20} color="#8b8b99" style={{marginRight: 12}} />
+                           <Text style={styles.metaValue}>Low</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.clearBtn} onPress={() => setActiveSheet(null)}>
+                           <Text style={styles.clearBtnText}>Clear</Text>
+                        </TouchableOpacity>
+                     </View>
+                  </View>
+               )}
+
+               {/* ---------------- TAGS SHEET ---------------- */}
+               {activeSheet === 'tags' && (
+                  <View>
+                     <View style={styles.subSheetHeader}>
+                        <View style={{width: 32}} />
+                        <Text style={styles.headerTitle}>Tags</Text>
+                        <TouchableOpacity style={styles.modalIconBtn} onPress={() => setActiveSheet(null)}>
+                           <Ionicons name="close" size={20} color={AppColors.textMuted} />
+                        </TouchableOpacity>
+                     </View>
+                     <View style={styles.subSheetBody}>
+                        <View style={styles.searchBar}>
+                           <Ionicons name="search" size={16} color={AppColors.textMuted} />
+                           <TextInput placeholder="Search or create tags" placeholderTextColor={AppColors.textMuted} style={styles.searchInput} />
+                        </View>
+                        <ScrollView style={{maxHeight: 400}}>
+                           <View style={[styles.coloredTagRow, { backgroundColor: '#18181b' }]}><Text style={styles.metaValue}>ad.review</Text></View>
+                           <View style={[styles.coloredTagRow, { backgroundColor: '#2e1065' }]}><Text style={styles.metaValue}>b2b</Text></View>
+                           <View style={[styles.coloredTagRow, { backgroundColor: '#312e81' }]}><Text style={styles.metaValue}>car.part</Text></View>
+                           <View style={[styles.coloredTagRow, { backgroundColor: '#1e3a8a' }]}><Text style={styles.metaValue}>car.rent</Text></View>
+                           <View style={[styles.coloredTagRow, { backgroundColor: '#0f4a6e' }]}><Text style={styles.metaValue}>car.transfer</Text></View>
+                           <View style={[styles.coloredTagRow, { backgroundColor: '#064e3b' }]}><Text style={styles.metaValue}>crm</Text></View>
+                           <View style={[styles.coloredTagRow, { backgroundColor: '#78350f' }]}><Text style={styles.metaValue}>fahsy</Text></View>
+                        </ScrollView>
+                     </View>
+                  </View>
+               )}
+
+               {/* ---------------- STATUS SHEET ---------------- */}
+               {activeSheet === 'status' && (
+                  <View>
+                     <View style={styles.subSheetHeader}>
+                        <View style={{width: 32}} />
+                        <Text style={styles.headerTitle}>Status & Task Type</Text>
+                        <TouchableOpacity onPress={() => setActiveSheet(null)}>
+                           <Text style={[styles.createText, { color: '#8b5cf6' }]}>Done</Text>
+                        </TouchableOpacity>
+                     </View>
+                     <View style={styles.subSheetBody}>
+                        <View style={styles.searchBar}>
+                           <Ionicons name="search" size={16} color={AppColors.textMuted} />
+                           <TextInput placeholder="Search..." placeholderTextColor={AppColors.textMuted} style={styles.searchInput} />
+                        </View>
+                        <View style={styles.tabRow}>
+                           <Text style={[styles.metaValue, { borderBottomWidth: 1, borderColor: AppColors.white, paddingBottom: 8 }]}>Status</Text>
+                           <Text style={[styles.metaValue, { color: AppColors.textMuted, paddingBottom: 8 }]}>Task Type</Text>
+                        </View>
+                        <ScrollView style={{maxHeight: 400}}>
+                           <Text style={[styles.metaLabel, {marginTop: Spacing.md}]}>Not started</Text>
+                           <TouchableOpacity style={[styles.iconRowItem, styles.rowItemBordered]}>
+                              <Ionicons name="ellipse-outline" size={20} color={AppColors.textMuted} style={{marginRight: 12, borderStyle: 'dotted', borderWidth: 1, borderRadius: 10}} />
+                              <Text style={[styles.metaValue, { flex: 1 }]}>TO DO</Text>
+                              <Ionicons name="checkmark-circle" size={20} color="#8b5cf6" />
+                           </TouchableOpacity>
+
+                           <Text style={[styles.metaLabel, {marginTop: Spacing.md}]}>Active</Text>
+                           <TouchableOpacity style={styles.iconRowItem}>
+                              <Ionicons name="play-circle-outline" size={20} color="#fca5a5" style={{marginRight: 12}} />
+                              <Text style={styles.metaValue}>ISSUE</Text>
+                           </TouchableOpacity>
+                           <TouchableOpacity style={styles.iconRowItem}>
+                              <Ionicons name="play-circle-outline" size={20} color="#3b82f6" style={{marginRight: 12}} />
+                              <Text style={styles.metaValue}>IN PROGRESS</Text>
+                           </TouchableOpacity>
+                           <TouchableOpacity style={styles.iconRowItem}>
+                              <Ionicons name="play-circle-outline" size={20} color="#f97316" style={{marginRight: 12}} />
+                              <Text style={styles.metaValue}>BUGS</Text>
+                           </TouchableOpacity>
+                           <TouchableOpacity style={[styles.iconRowItem, styles.rowItemBordered]}>
+                              <Ionicons name="play-circle-outline" size={20} color="#f59e0b" style={{marginRight: 12}} />
+                              <Text style={styles.metaValue}>PENDING</Text>
+                           </TouchableOpacity>
+
+                           <Text style={[styles.metaLabel, {marginTop: Spacing.md}]}>Done</Text>
+                           <TouchableOpacity style={[styles.iconRowItem, styles.rowItemBordered]}>
+                              <Ionicons name="checkmark-circle-outline" size={20} color="#d946ef" style={{marginRight: 12}} />
+                              <Text style={styles.metaValue}>REVIEW</Text>
+                           </TouchableOpacity>
+
+                           <Text style={[styles.metaLabel, {marginTop: Spacing.md}]}>Closed</Text>
+                           <TouchableOpacity style={styles.iconRowItem}>
+                              <Ionicons name="checkmark-circle-outline" size={20} color="#10b981" style={{marginRight: 12}} />
+                              <Text style={styles.metaValue}>COMPLETE</Text>
+                           </TouchableOpacity>
+                        </ScrollView>
+                     </View>
+                  </View>
+               )}
+
+               {/* ---------------- ASSIGNEE SHEET ---------------- */}
+               {activeSheet === 'assignee' && (
+                  <View>
+                     <View style={styles.subSheetHeader}>
+                        <View style={{width: 32}} />
+                        <Text style={styles.headerTitle}>Assignees</Text>
+                        <TouchableOpacity style={styles.modalIconBtn} onPress={() => setActiveSheet(null)}>
+                           <Ionicons name="close" size={20} color={AppColors.textMuted} />
+                        </TouchableOpacity>
+                     </View>
+                     <View style={styles.subSheetBody}>
+                        <View style={styles.searchBar}>
+                           <Ionicons name="search" size={16} color={AppColors.textMuted} />
+                           <TextInput placeholder="Search people and teams..." placeholderTextColor={AppColors.textMuted} style={styles.searchInput} />
+                        </View>
+                        <View style={styles.chipRow}>
+                           <View style={styles.activeChip}>
+                              <View style={[styles.avatarCircle, { width: 16, height: 16, borderRadius: 8, marginRight: 6 }]}>
+                                 <Text style={[styles.avatarText, { fontSize: 8 }]}>OM</Text>
+                              </View>
+                              <Text style={[styles.metaValue, { fontSize: 13, marginRight: 6 }]}>Omar mohsen</Text>
+                              <Ionicons name="close" size={12} color={AppColors.textMuted} />
+                           </View>
+                        </View>
+                     </View>
+                  </View>
+               )}
+
+               {/* ---------------- ATTACHMENT SHEET ---------------- */}
+               {activeSheet === 'attachment' && (
+                  <View>
+                     <View style={styles.subSheetHeaderContainerLess}>
+                        <TouchableOpacity onPress={() => setActiveSheet(null)} style={{alignSelf: 'flex-end', paddingBottom: Spacing.md}}>
+                           <Text style={[styles.createText, { color: '#8b5cf6' }]}>Done</Text>
+                        </TouchableOpacity>
+                     </View>
+                     <View style={styles.subSheetBody}>
+                        <TouchableOpacity style={styles.iconRowItem}>
+                           <Ionicons name="camera-outline" size={20} color={AppColors.white} style={{marginRight: 16}} />
+                           <Text style={styles.metaValue}>Take photo</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.iconRowItem}>
+                           <Ionicons name="image-outline" size={20} color={AppColors.white} style={{marginRight: 16}} />
+                           <Text style={styles.metaValue}>Select image</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.iconRowItem}>
+                           <Ionicons name="folder-outline" size={20} color={AppColors.white} style={{marginRight: 16}} />
+                           <Text style={styles.metaValue}>Upload file</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.iconRowItem}>
+                           <Ionicons name="videocam-outline" size={20} color={AppColors.white} style={{marginRight: 16}} />
+                           <Text style={styles.metaValue}>Add video</Text>
+                        </TouchableOpacity>
+                     </View>
+                  </View>
+               )}
+            </View>
+         </View>
       </Modal>
     </SafeAreaView>
   );
@@ -657,5 +852,102 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.3)',
     fontWeight: '700',
     fontSize: 14,
+  },
+  createText: {
+    color: AppColors.white,
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  
+  // Dynamic Sub-Sheets Models
+  subSheetContent: {
+    paddingBottom: Spacing.xxl + 40,
+    backgroundColor: '#0a0a0c', // Darker to contrast
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  subSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  subSheetHeaderContainerLess: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+    marginBottom: Spacing.md,
+  },
+  subSheetBody: {
+    paddingBottom: Spacing.lg,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    marginBottom: Spacing.lg,
+  },
+  searchInput: {
+    color: AppColors.white,
+    marginLeft: Spacing.sm,
+    flex: 1,
+  },
+  iconRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+  },
+  rowItemBordered: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+    marginBottom: Spacing.md,
+  },
+  clearBtn: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.xl,
+  },
+  clearBtnText: {
+    color: AppColors.textMuted,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  coloredTagRow: {
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 14,
+    marginBottom: Spacing.sm,
+    justifyContent: 'center',
+  },
+  tabRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    marginBottom: Spacing.md,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: Spacing.xs,
+  },
+  activeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(139, 92, 246, 0.2)', // Purple tint
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.4)',
   }
 });
