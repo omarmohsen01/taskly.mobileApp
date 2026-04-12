@@ -1,7 +1,7 @@
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import React, { useState, useCallback } from 'react';
 import {
   Dimensions,
   ScrollView,
@@ -14,27 +14,14 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  ActivityIndicator
 } from 'react-native';
+import { fetchTasks } from '@/lib/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const MOCK_COLUMNS = [
-  { id: 'todo', name: 'TO DO', color: '#8b8b99' },
-  { id: 'inprogress', name: 'IN PROGRESS', color: '#3b82f6' },
-  { id: 'complete', name: 'COMPLETE', color: '#10b981' }
-];
-
-const MOCK_TASKS = [
-  { id: 1, title: 'Mobile : home screen statistics', columnId: 'todo' },
-  { id: 2, title: 'Mobile : integrate with AI chat', columnId: 'todo' },
-  { id: 3, title: 'Mobile-Design : make board design', columnId: 'todo' },
-  { id: 4, title: 'Backend-API : Chats websocket', columnId: 'inprogress' },
-  { id: 5, title: 'Backend-API : Packages and subscriptions', columnId: 'complete' },
-  { id: 6, title: 'Mobile : packages and subscriptions', columnId: 'complete' },
-  { id: 7, title: 'Backend-API : Auth', columnId: 'complete' },
-  { id: 8, title: 'Backend-API : make workspaces', columnId: 'complete' },
-];
+const COLOR_PALETTE = ['#8b8b99', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export default function BoardScreen() {
   const router = useRouter();
@@ -46,6 +33,29 @@ export default function BoardScreen() {
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
+  
+  const [columns, setColumns] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadBoardData = useCallback(async () => {
+    if (!id) return;
+    try {
+      const res = await fetchTasks(id);
+      if (res?.data) {
+        setColumns(res.data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadBoardData();
+    }, [loadBoardData])
+  );
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -87,14 +97,15 @@ export default function BoardScreen() {
         decelerationRate="fast"
         contentContainerStyle={styles.kanbanScroll}
       >
-        {MOCK_COLUMNS.map(col => {
-          const colTasks = MOCK_TASKS.filter(t => t.columnId === col.id);
+        {columns.map((col, idx) => {
+          const colTasks = col.tasks || [];
+          const colColor = COLOR_PALETTE[idx % COLOR_PALETTE.length];
           return (
-            <View key={col.id} style={styles.kanbanColumn}>
+            <View key={`col-${col.id}`} style={styles.kanbanColumn}>
               <View style={styles.colHeaderRow}>
-                <View style={[styles.colHeaderBadge, { backgroundColor: col.color + '33' }]}>
-                  <Text style={[styles.colHeaderText, { color: col.color }]}>
-                    {col.name}
+                <View style={[styles.colHeaderBadge, { backgroundColor: colColor + '33' }]}>
+                  <Text style={[styles.colHeaderText, { color: colColor }]}>
+                    {col.name?.toUpperCase()}
                   </Text>
                 </View>
                 <View style={styles.colHeaderActions}>
@@ -104,9 +115,9 @@ export default function BoardScreen() {
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false} style={styles.kanbanList}>
-                {colTasks.map(task => (
-                  <TouchableOpacity key={task.id} style={styles.taskCardItem} activeOpacity={0.8}>
-                     <View style={[styles.taskCheckbox, { backgroundColor: col.color }]} />
+                {colTasks.map((task: any) => (
+                  <TouchableOpacity key={`task-${task.id}`} style={styles.taskCardItem} activeOpacity={0.8}>
+                     <View style={[styles.taskCheckbox, { backgroundColor: colColor }]} />
                      <Text style={styles.taskCardText} numberOfLines={2}>{task.title}</Text>
                   </TouchableOpacity>
                 ))}
@@ -134,30 +145,33 @@ export default function BoardScreen() {
             <Text style={styles.listTopTitle}>Taskly</Text>
         </View>
 
-        {MOCK_COLUMNS.map(col => {
-          const colTasks = MOCK_TASKS.filter(t => t.columnId === col.id);
+        {columns.map((col, idx) => {
+          const colTasks = col.tasks || [];
+          const colColor = COLOR_PALETTE[idx % COLOR_PALETTE.length];
           if (colTasks.length === 0) return null;
           
           return (
-            <View key={col.id} style={styles.listSection}>
+            <View key={`list-col-${col.id}`} style={styles.listSection}>
                <View style={styles.listSectionHeader}>
                   <Ionicons name="caret-down" size={14} color={AppColors.textMuted} style={{marginRight: Spacing.sm}} />
-                  <View style={[styles.listColBadge, { backgroundColor: col.color }]}>
-                     <Text style={styles.listColBadgeText}>{col.name}</Text>
+                  <View style={[styles.listColBadge, { backgroundColor: colColor }]}>
+                     <Text style={styles.listColBadgeText}>{col.name?.toUpperCase()}</Text>
                   </View>
                   <Text style={styles.listTaskCount}>{colTasks.length} Tasks</Text>
                </View>
 
-               {colTasks.map((task, index) => (
-                 <TouchableOpacity key={task.id} style={[styles.listRow, index === colTasks.length -1 && { borderBottomWidth: 0 }]} activeOpacity={0.7}>
+               {colTasks.map((task: any, index: number) => (
+                 <TouchableOpacity key={`list-task-${task.id}`} style={[styles.listRow, index === colTasks.length - 1 && { borderBottomWidth: 0 }]} activeOpacity={0.7}>
                     <View style={styles.listRowLeft}>
-                      <View style={[styles.taskCheckbox, { backgroundColor: col.color, width: 14, height: 14, borderRadius: 2 }]} />
+                      <View style={[styles.taskCheckbox, { backgroundColor: colColor, width: 14, height: 14, borderRadius: 2 }]} />
                       <Text style={styles.listRowText} numberOfLines={1}>{task.title}</Text>
                     </View>
                     <View style={styles.listRowRight}>
-                       <View style={styles.avatarCircle}>
-                          <Text style={styles.avatarText}>OM</Text>
-                       </View>
+                       {task.creator?.full_name ? (
+                          <View style={styles.avatarCircle}>
+                             <Text style={styles.avatarText}>{task.creator.first_name?.[0]}{task.creator.last_name?.[0] || ''}</Text>
+                          </View>
+                       ) : null}
                     </View>
                  </TouchableOpacity>
                ))}
@@ -184,7 +198,13 @@ export default function BoardScreen() {
       <StatusBar barStyle="light-content" backgroundColor={AppColors.background} />
       {renderHeader()}
       <View style={styles.contentArea}>
-        {type === 'kanban' ? renderKanban() : renderList()}
+        {isLoading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+             <ActivityIndicator size="large" color={AppColors.accent} />
+          </View>
+        ) : (
+          type === 'kanban' ? renderKanban() : renderList()
+        )}
       </View>
 
       {/* Floating Action Button */}

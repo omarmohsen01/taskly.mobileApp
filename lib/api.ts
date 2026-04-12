@@ -192,6 +192,10 @@ export async function createBoard(payload: {
   return apiPostForm('boards', data);
 }
 
+export async function fetchTasks(boardId: string | number) {
+  return apiGet(`tasks?board_id=${boardId}`);
+}
+
 export type StatFilter = 'all' | 'today' | 'completed' | 'in_progress';
 
 export async function fetchStatistics(workspaceId: number | string, filter: StatFilter = 'all') {
