@@ -439,8 +439,12 @@ export default function HomeScreen() {
                                   key={`b-${board.id}`}
                                   style={styles.listItem}
                                   activeOpacity={0.7}
+                                  onPress={() => router.push({
+                                    pathname: `/board/${board.id}`,
+                                    params: { boardName: board.name, boardType: board.type || 'kanban' }
+                                  })}
                                 >
-                                  <Ionicons name="list-outline" size={16} color={AppColors.textMuted} />
+                                  <Ionicons name={board.type === 'list' ? "list-outline" : "grid-outline"} size={16} color={AppColors.textMuted} />
                                   <Text style={styles.listText}>{board.name}</Text>
                                 </TouchableOpacity>
                               ))}

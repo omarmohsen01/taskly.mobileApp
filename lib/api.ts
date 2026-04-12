@@ -1,12 +1,27 @@
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { persistToken, loadPersistedToken } from './auth-store';
 
 let inMemoryToken: string | null = null;
 
 function getBaseUrl(): string {
+  // If explicitly provided via our new .env file
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    const url = process.env.EXPO_PUBLIC_API_URL;
+    return url.endsWith('/') ? url : `${url}/`;
+  }
+
   const extra = (Constants.expoConfig as any)?.extra || (Constants as any)?.manifest2?.extra;
-  const url = extra?.apiBaseUrl || 'http://127.0.0.1:8000/api/';
-  return url.endsWith('/') ? url : `${url}/`;
+
+  // Dynamic host injection for physical devices testing on the same Wi-Fi
+  const hostUri = Constants?.expoConfig?.hostUri;
+  if (Platform.OS !== 'web' && hostUri) {
+    const ip = hostUri.split(':')[0]; // Extract the IP address (e.g., 192.168.1.100)
+    return `http://${ip}:8000/api/`;
+  }
+
+  // Fallback for Web browser or PC-based Emulators mapped directly via proxy layer
+  return 'http://127.0.0.1:8000/api/';
 }
 
 export function getToken(): string | null {
