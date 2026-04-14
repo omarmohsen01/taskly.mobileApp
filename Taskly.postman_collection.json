@@ -70,32 +70,41 @@
         {
           "name": "SignIn",
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "body": {
               "mode": "formdata",
               "formdata": [
                 {
                   "key": "email",
-                  "value": "omar@ex.com",
+                  "value": "john.doe@example.com",
                   "type": "text",
                   "uuid": "edba9d7d-5e84-4c74-811b-cc5ed339725c"
                 },
                 {
                   "key": "password",
-                  "value": "12345678",
+                  "value": "password",
                   "type": "text",
                   "uuid": "d7b885ec-0011-4043-932e-bdec2e092a82"
                 }
               ]
             },
             "url": {
-              "raw": "{{localHost}}auth/signIn",
+              "raw": "{{localHost}}auth/signin",
               "host": [
                 "{{localHost}}auth"
               ],
               "path": [
-                "signIn"
+                "signin"
               ]
             }
           },
@@ -105,7 +114,13 @@
           "name": "SignOut",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "body": {
               "mode": "formdata",
               "formdata": []
@@ -470,6 +485,84 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "roles",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{localHost}}roles",
+              "host": [
+                "{{localHost}}roles"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Users Assigned",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{localHost}}projects/1/users",
+              "host": [
+                "{{localHost}}projects"
+              ],
+              "path": [
+                "1",
+                "users"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -601,15 +694,14 @@
               "formdata": []
             },
             "url": {
-              "raw": "{{localHost}}tasks?board_id",
+              "raw": "{{localHost}}tasks?board_id=1",
               "host": [
                 "{{localHost}}tasks"
               ],
               "query": [
                 {
                   "key": "board_id",
-                  "value": null,
-                  "type": "text"
+                  "value": "1"
                 }
               ]
             }
@@ -648,44 +740,44 @@
                 },
                 {
                   "key": "descriptions",
-                  "value": "",
+                  "value": "omar workspace's",
                   "type": "text",
                   "uuid": "b2e0c75d-8e83-4cd7-ab64-b16f1492952a"
                 },
                 {
                   "key": "priority",
-                  "value": "",
+                  "value": "low",
                   "type": "text",
                   "uuid": "dd097ae3-b58e-4233-a289-f74170181cee",
                   "description": "'low', 'medium', 'high', 'urgent'"
                 },
                 {
                   "key": "start_date",
-                  "value": "",
+                  "value": "2020-10-10",
                   "type": "text",
                   "uuid": "14c6b30b-999a-43d3-94e3-446bd56cf65d"
                 },
                 {
                   "key": "due_date",
-                  "value": "",
+                  "value": "2020-10-10",
                   "type": "text",
                   "uuid": "34436dfa-db39-4888-b046-db40dcf53d2f"
                 },
                 {
                   "key": "position",
-                  "value": "",
+                  "value": "1",
                   "type": "text",
                   "uuid": "9f3bc0c0-9917-4fea-ad03-e12216b12cec"
                 },
                 {
                   "key": "board_id",
-                  "value": "",
+                  "value": "1",
                   "type": "text",
                   "uuid": "48de9d05-eec3-473e-9eb5-12a728e6cb88"
                 },
                 {
                   "key": "board_column_id",
-                  "value": "",
+                  "value": "1",
                   "type": "text",
                   "uuid": "a71221e4-2485-4462-8fe6-3b6c693575c1"
                 },
@@ -693,7 +785,32 @@
                   "key": "parent_id",
                   "value": "",
                   "type": "text",
-                  "uuid": "f10759bf-562f-4eaa-9740-e7f5c3ee3e99"
+                  "uuid": "f10759bf-562f-4eaa-9740-e7f5c3ee3e99",
+                  "disabled": true
+                },
+                {
+                  "key": "assigned_users[0]",
+                  "value": "1",
+                  "type": "text",
+                  "uuid": "6e1debb7-ef04-4316-8c02-eecdac123fc1"
+                },
+                {
+                  "key": "labels_ids[0]",
+                  "value": "1",
+                  "type": "text",
+                  "uuid": "423e4e7f-bd7b-437a-bfea-4b583d2ade7b"
+                },
+                {
+                  "key": "attachments[0]",
+                  "type": "file",
+                  "uuid": "b32d0092-8e9e-4cf8-9ff1-61fa807407ef",
+                  "src": "/D:/Freelance/Team.WorkSpace/schemePNG.png"
+                },
+                {
+                  "key": "attachments[1]",
+                  "type": "file",
+                  "uuid": "d6afcd55-330e-4d07-9f99-7044bf78cd15",
+                  "src": "/C:/Users/Asus/Downloads/resume-review.pdf"
                 }
               ]
             },
@@ -735,12 +852,12 @@
               "formdata": []
             },
             "url": {
-              "raw": "{{localHost}}tasks/3",
+              "raw": "{{localHost}}tasks/911",
               "host": [
                 "{{localHost}}tasks"
               ],
               "path": [
-                "3"
+                "911"
               ]
             }
           },
@@ -797,6 +914,197 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Labels",
+      "item": [
+        {
+          "name": "Index",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "omar workspace's",
+                  "type": "text",
+                  "uuid": "a3214498-f0c7-4fef-8eed-5e681d03f74d"
+                },
+                {
+                  "key": "descriptions",
+                  "value": "omar workspace's",
+                  "type": "text",
+                  "uuid": "b2e0c75d-8e83-4cd7-ab64-b16f1492952a"
+                },
+                {
+                  "key": "priority",
+                  "value": "low",
+                  "type": "text",
+                  "uuid": "dd097ae3-b58e-4233-a289-f74170181cee",
+                  "description": "'low', 'medium', 'high', 'urgent'"
+                },
+                {
+                  "key": "start_date",
+                  "value": "2020-10-10",
+                  "type": "text",
+                  "uuid": "14c6b30b-999a-43d3-94e3-446bd56cf65d"
+                },
+                {
+                  "key": "due_date",
+                  "value": "2020-10-10",
+                  "type": "text",
+                  "uuid": "34436dfa-db39-4888-b046-db40dcf53d2f"
+                },
+                {
+                  "key": "position",
+                  "value": "1",
+                  "type": "text",
+                  "uuid": "9f3bc0c0-9917-4fea-ad03-e12216b12cec"
+                },
+                {
+                  "key": "board_id",
+                  "value": "1",
+                  "type": "text",
+                  "uuid": "48de9d05-eec3-473e-9eb5-12a728e6cb88"
+                },
+                {
+                  "key": "board_column_id",
+                  "value": "1",
+                  "type": "text",
+                  "uuid": "a71221e4-2485-4462-8fe6-3b6c693575c1"
+                },
+                {
+                  "key": "parent_id",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "f10759bf-562f-4eaa-9740-e7f5c3ee3e99",
+                  "disabled": true
+                },
+                {
+                  "key": "assigned_users[0]",
+                  "value": "1",
+                  "type": "text",
+                  "uuid": "6e1debb7-ef04-4316-8c02-eecdac123fc1"
+                },
+                {
+                  "key": "labels_ids[0]",
+                  "value": "1",
+                  "type": "text",
+                  "uuid": "423e4e7f-bd7b-437a-bfea-4b583d2ade7b"
+                },
+                {
+                  "key": "attachments[0]",
+                  "type": "file",
+                  "uuid": "b32d0092-8e9e-4cf8-9ff1-61fa807407ef",
+                  "src": "/D:/Freelance/Team.WorkSpace/schemePNG.png"
+                },
+                {
+                  "key": "attachments[1]",
+                  "type": "file",
+                  "uuid": "d6afcd55-330e-4d07-9f99-7044bf78cd15",
+                  "src": "/C:/Users/Asus/Downloads/resume-review.pdf"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{localHost}}labels?project_id=1",
+              "host": [
+                "{{localHost}}labels"
+              ],
+              "query": [
+                {
+                  "key": "project_id",
+                  "value": "1",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Store",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "a3214498-f0c7-4fef-8eed-5e681d03f74d"
+                },
+                {
+                  "key": "color",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "ce8d5958-b3a1-4142-85c2-f066fe15fa6a"
+                },
+                {
+                  "key": "project_id",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "5e02f343-dc0c-499c-8bd0-9216d4f14029"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{localHost}}labels",
+              "host": [
+                "{{localHost}}labels"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Statistics",
+      "request": {
+        "method": "GET",
+        "header": []
+      },
+      "response": []
     }
   ],
   "event": [

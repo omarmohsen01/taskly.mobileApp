@@ -214,9 +214,15 @@ export default function BoardScreen() {
       </TouchableOpacity>
 
       {/* Add Task Modal */}
-      <Modal visible={isTaskModalVisible} animationType="slide" transparent>
+      <Modal visible={isTaskModalVisible} animationType="slide" transparent onRequestClose={() => setIsTaskModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          {/* Backdrop Click-to-Close Intercept */}
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setIsTaskModalVisible(false)} />
+          
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+            {/* Pull Bar indicator for visual cue */}
+            <View style={{width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 2, alignSelf: 'center', marginVertical: 8}} />
+            
             {/* Modal Header */}
             <View style={styles.modalHeader}>
                <TouchableOpacity style={styles.modalContextBtn}>
@@ -307,7 +313,7 @@ export default function BoardScreen() {
       </Modal>
 
       {/* Sub-modals for context actions */}
-      <Modal visible={!!activeSheet} animationType="slide" transparent>
+      <Modal visible={!!activeSheet} animationType="slide" transparent onRequestClose={() => setActiveSheet(null)}>
          <View style={styles.modalOverlay}>
             <TouchableOpacity style={{ flex: 1 }} onPress={() => setActiveSheet(null)} />
             <View style={[styles.modalContent, styles.subSheetContent]}>
@@ -332,7 +338,7 @@ export default function BoardScreen() {
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.iconRowItem}>
                            <Ionicons name="flag" size={20} color="#3b82f6" style={{marginRight: 12}} />
-                           <Text style={styles.metaValue}>Normal</Text>
+                           <Text style={styles.metaValue}>Medium</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.iconRowItem}>
                            <Ionicons name="flag" size={20} color="#8b8b99" style={{marginRight: 12}} />

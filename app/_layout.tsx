@@ -1,13 +1,17 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { useEffect } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { AppColors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth-store';
 import Toast, { BaseToastProps } from 'react-native-toast-message';
-import { View, Text, StyleSheet } from 'react-native';
 import { BorderRadius, Spacing } from '@/constants/theme';
+
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync();
 
 const toastConfig = {
   success: (props: BaseToastProps) => (
@@ -51,13 +55,17 @@ function AuthGuard() {
   useEffect(() => {
     if (isLoading) return; // still hydrating — wait
 
-    const inAuthGroup = segments[0] === '(auth)';
+    // Hide splash screen since hydration is done
+    SplashScreen.hideAsync();
+
+    // segments for group routes like (auth) usually contain the group name
+    const inAuthGroup = segments.includes('(auth)');
 
     if (!token && !inAuthGroup) {
-      // Not logged in → send to welcome screen
+      // Not logged in and not in the auth flow → send to welcome screen (Get Started)
       router.replace('/(auth)/welcome');
     } else if (token && inAuthGroup) {
-      // Already logged in → send to main app
+      // Already logged in but trying to access auth screens → send to main app
       router.replace('/(tabs)');
     }
   }, [token, isLoading, segments]);
