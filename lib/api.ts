@@ -39,7 +39,7 @@ export async function setToken(token: string | null) {
   await persistToken(token);
 }
 
-export async function apiPostForm(path: string, data: Record<string, string>): Promise<any> {
+export async function apiPostForm(path: string, data: Record<string, any>): Promise<any> {
   const form = new FormData();
   Object.entries(data).forEach(([key, value]) => {
     form.append(key, value);
@@ -133,7 +133,7 @@ export async function createSpace(payload: {
   // If the backend expects users[0], users[1], we might need to adjust apiPostForm or the payload.
   // Looking at Postman: "key": "users[0]". 
   
-  const data: Record<string, string> = {
+  const data: Record<string, any> = {
     workspace_id: String(payload.workspace_id),
     name: payload.name,
     description: payload.description,
@@ -158,7 +158,7 @@ export async function createProject(payload: {
   access_mode: 'inherit' | 'restricted';
   users?: { user_id: number; role_id: number }[];
 }) {
-  const data: Record<string, string> = {
+  const data: Record<string, any> = {
     space_id: String(payload.space_id),
     name: payload.name,
     description: payload.description,
@@ -184,12 +184,83 @@ export async function createBoard(payload: {
   name: string;
   type: 'kanban' | 'list';
 }) {
-  const data: Record<string, string> = {
+  const data: Record<string, any> = {
     project_id: String(payload.project_id),
     name: payload.name,
     type: payload.type,
   };
   return apiPostForm('boards', data);
+}
+
+export async function fetchProjects() {
+  return apiGet('projects');
+}
+
+export async function fetchProjectUsers(projectId: string | number) {
+  return apiGet(`projects/${projectId}/users`);
+}
+
+export async function fetchBoards() {
+  return apiGet('boards');
+}
+
+export async function fetchLabels(projectId: string | number) {
+  return apiGet(`labels?project_id=${projectId}`);
+}
+
+export async function createLabel(payload: {
+  name: string;
+  color: string;
+  project_id: string | number;
+}) {
+  const data: Record<string, any> = {
+    name: payload.name,
+    color: payload.color,
+    project_id: String(payload.project_id),
+  };
+  return apiPostForm('labels', data);
+}
+
+export async function createTask(payload: {
+  title: string;
+  descriptions?: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  start_date?: string;
+  due_date?: string;
+  board_id: number | string;
+  board_column_id: number | string;
+  assigned_users?: number[];
+  labels_ids?: number[];
+  attachments?: any[];
+}) {
+  const data: Record<string, any> = {
+    title: payload.title,
+    priority: payload.priority,
+    position: '1',
+    board_id: String(payload.board_id),
+    board_column_id: String(payload.board_column_id),
+  };
+  if (payload.descriptions) data.descriptions = payload.descriptions;
+  if (payload.start_date) data.start_date = payload.start_date;
+  if (payload.due_date) data.due_date = payload.due_date;
+  
+  if (payload.assigned_users && payload.assigned_users.length > 0) {
+    payload.assigned_users.forEach((id, index) => {
+      data[`assigned_users[${index}]`] = String(id);
+    });
+  }
+  if (payload.labels_ids && payload.labels_ids.length > 0) {
+    payload.labels_ids.forEach((id, index) => {
+      data[`labels_ids[${index}]`] = String(id);
+    });
+  }
+  if (payload.attachments && payload.attachments.length > 0) {
+    payload.attachments.forEach((file, index) => {
+      data[`attachments[${index}]`] = file;
+    });
+  }
+
+  return apiPostForm('tasks', data);
 }
 
 export async function fetchTasks(boardId: string | number) {
