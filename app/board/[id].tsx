@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { fetchTasks } from '@/lib/api';
 import AddTaskDrawer from '@/components/AddTaskDrawer';
+import TaskDetailsDrawer from '@/components/TaskDetailsDrawer';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -32,6 +33,8 @@ export default function BoardScreen() {
   const type = boardType || 'kanban'; 
 
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
+  const [isDetailsVisible, setIsDetailsVisible] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | number | null>(null);
   const [selectedColumnId, setSelectedColumnId] = useState<string | number | undefined>(undefined);
 
   
@@ -125,7 +128,15 @@ export default function BoardScreen() {
 
               <ScrollView showsVerticalScrollIndicator={false} style={styles.kanbanList}>
                 {colTasks.map((task: any) => (
-                  <TouchableOpacity key={`task-${task.id}`} style={styles.taskCardItem} activeOpacity={0.8}>
+                  <TouchableOpacity 
+                    key={`task-${task.id}`} 
+                    style={styles.taskCardItem} 
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setSelectedTaskId(task.id);
+                      setIsDetailsVisible(true);
+                    }}
+                  >
                      <View style={[styles.taskCheckbox, { backgroundColor: colColor }]} />
                      <Text style={styles.taskCardText} numberOfLines={2}>{task.title}</Text>
                   </TouchableOpacity>
@@ -176,7 +187,15 @@ export default function BoardScreen() {
                </View>
 
                {colTasks.map((task: any, index: number) => (
-                 <TouchableOpacity key={`list-task-${task.id}`} style={[styles.listRow, index === colTasks.length - 1 && { borderBottomWidth: 0 }]} activeOpacity={0.7}>
+                 <TouchableOpacity 
+                   key={`list-task-${task.id}`} 
+                   style={[styles.listRow, index === colTasks.length - 1 && { borderBottomWidth: 0 }]} 
+                   activeOpacity={0.7}
+                   onPress={() => {
+                     setSelectedTaskId(task.id);
+                     setIsDetailsVisible(true);
+                   }}
+                 >
                     <View style={styles.listRowLeft}>
                       <View style={[styles.taskCheckbox, { backgroundColor: colColor, width: 14, height: 14, borderRadius: 2 }]} />
                       <Text style={styles.listRowText} numberOfLines={1}>{task.title}</Text>
@@ -241,6 +260,13 @@ export default function BoardScreen() {
         defaultBoardId={id}
         defaultColumnId={selectedColumnId}
         onTaskCreated={() => loadBoardData()}
+      />
+
+      <TaskDetailsDrawer
+        visible={isDetailsVisible}
+        taskId={selectedTaskId}
+        onClose={() => setIsDetailsVisible(false)}
+        onTaskUpdated={() => loadBoardData()}
       />
     </SafeAreaView>
   );

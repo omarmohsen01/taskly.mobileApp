@@ -52,10 +52,11 @@ interface AddTaskDrawerProps {
   onClose: () => void;
   defaultBoardId?: string | number;
   defaultColumnId?: string | number;
+  parentId?: string | number;
   onTaskCreated?: () => void;
 }
 
-export default function AddTaskDrawer({ visible, onClose, defaultBoardId, defaultColumnId, onTaskCreated }: AddTaskDrawerProps) {
+export default function AddTaskDrawer({ visible, onClose, defaultBoardId, defaultColumnId, parentId, onTaskCreated }: AddTaskDrawerProps) {
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(SCREEN_HEIGHT);
 
@@ -203,6 +204,7 @@ export default function AddTaskDrawer({ visible, onClose, defaultBoardId, defaul
         assigned_users: selectedUserIds,
         labels_ids: selectedLabelIds,
         attachments: files.length > 0 ? files : undefined,
+        parent_id: parentId,
       });
 
       Toast.show({ type: 'success', text1: 'Task Created' });

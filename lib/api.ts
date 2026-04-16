@@ -232,6 +232,7 @@ export async function createTask(payload: {
   assigned_users?: number[];
   labels_ids?: number[];
   attachments?: any[];
+  parent_id?: number | string;
 }) {
   const data: Record<string, any> = {
     title: payload.title,
@@ -243,6 +244,7 @@ export async function createTask(payload: {
   if (payload.descriptions) data.descriptions = payload.descriptions;
   if (payload.start_date) data.start_date = payload.start_date;
   if (payload.due_date) data.due_date = payload.due_date;
+  if (payload.parent_id) data.parent_id = String(payload.parent_id);
   
   if (payload.assigned_users && payload.assigned_users.length > 0) {
     payload.assigned_users.forEach((id, index) => {
@@ -265,6 +267,52 @@ export async function createTask(payload: {
 
 export async function fetchTasks(boardId: string | number) {
   return apiGet(`tasks?board_id=${boardId}`);
+}
+
+export async function fetchTaskDetails(taskId: string | number) {
+  return apiGet(`tasks/${taskId}`);
+}
+
+export async function updateTask(taskId: string | number, payload: {
+  title?: string;
+  descriptions?: string;
+  priority?: string;
+  start_date?: string;
+  due_date?: string;
+  board_column_id?: number | string;
+  assigned_users?: number[];
+  labels_ids?: number[];
+}) {
+  const data: Record<string, any> = {};
+  if (payload.title) data.title = payload.title;
+  if (payload.descriptions !== undefined) data.descriptions = payload.descriptions;
+  if (payload.priority) data.priority = payload.priority;
+  if (payload.start_date) data.start_date = payload.start_date;
+  if (payload.due_date) data.due_date = payload.due_date;
+  if (payload.board_column_id) data.board_column_id = String(payload.board_column_id);
+  
+  if (payload.assigned_users && payload.assigned_users.length > 0) {
+    payload.assigned_users.forEach((id, index) => {
+      data[`assigned_users[${index}]`] = String(id);
+    });
+  }
+  if (payload.labels_ids && payload.labels_ids.length > 0) {
+    payload.labels_ids.forEach((id, index) => {
+      data[`labels_ids[${index}]`] = String(id);
+    });
+  }
+
+  // Laravel handles PATCH/PUT methods via _method field in FormData if using POST
+  data._method = 'PATCH';
+
+  return apiPostForm(`tasks/${taskId}`, data);
+}
+
+export async function createComment(payload: {
+  task_id: string | number;
+  comments: string;
+}) {
+  return apiPostForm('comments', payload);
 }
 
 export type StatFilter = 'all' | 'today' | 'completed' | 'in_progress';
