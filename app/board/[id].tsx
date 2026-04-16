@@ -32,6 +32,7 @@ export default function BoardScreen() {
   const type = boardType || 'kanban'; 
 
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
+  const [selectedColumnId, setSelectedColumnId] = useState<string | number | undefined>(undefined);
 
   
   const [columns, setColumns] = useState<any[]>([]);
@@ -109,7 +110,15 @@ export default function BoardScreen() {
                   </Text>
                 </View>
                 <View style={styles.colHeaderActions}>
-                  <TouchableOpacity style={styles.colBtn}><Ionicons name="add" size={20} color={AppColors.textMuted}/></TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.colBtn} 
+                    onPress={() => {
+                      setSelectedColumnId(col.id);
+                      setIsDrawerVisible(true);
+                    }}
+                  >
+                    <Ionicons name="add" size={20} color={AppColors.textMuted}/>
+                  </TouchableOpacity>
                   <TouchableOpacity style={styles.colBtn}><Ionicons name="ellipsis-horizontal" size={20} color={AppColors.textMuted}/></TouchableOpacity>
                 </View>
               </View>
@@ -122,7 +131,13 @@ export default function BoardScreen() {
                   </TouchableOpacity>
                 ))}
                 
-                <TouchableOpacity style={styles.addTaskBtn} onPress={() => setIsDrawerVisible(true)}>
+                <TouchableOpacity 
+                  style={styles.addTaskBtn} 
+                  onPress={() => {
+                    setSelectedColumnId(col.id);
+                    setIsDrawerVisible(true);
+                  }}
+                >
                    <Ionicons name="add" size={18} color={AppColors.textMuted} />
                    <Text style={styles.addTaskText}>Add Task</Text>
                 </TouchableOpacity>
@@ -178,7 +193,10 @@ export default function BoardScreen() {
                
                <TouchableOpacity 
                  style={[styles.listRow, { borderBottomWidth: 0, marginTop: Spacing.xs }]}
-                 onPress={() => setIsDrawerVisible(true)}
+                 onPress={() => {
+                   setSelectedColumnId(col.id);
+                   setIsDrawerVisible(true);
+                 }}
                >
                   <View style={styles.listRowLeft}>
                     <Ionicons name="add" size={18} color={AppColors.textMuted} />
@@ -206,7 +224,14 @@ export default function BoardScreen() {
           type === 'kanban' ? renderKanban() : renderList()
         )}
       </View>      {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab} activeOpacity={0.8} onPress={() => setIsDrawerVisible(true)}>
+      <TouchableOpacity 
+        style={styles.fab} 
+        activeOpacity={0.8} 
+        onPress={() => {
+          setSelectedColumnId(undefined);
+          setIsDrawerVisible(true);
+        }}
+      >
         <Ionicons name="add" size={28} color={AppColors.white} />
       </TouchableOpacity>
 
@@ -214,6 +239,7 @@ export default function BoardScreen() {
         visible={isDrawerVisible} 
         onClose={() => setIsDrawerVisible(false)} 
         defaultBoardId={id}
+        defaultColumnId={selectedColumnId}
         onTaskCreated={() => loadBoardData()}
       />
     </SafeAreaView>
