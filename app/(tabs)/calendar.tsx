@@ -12,6 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { fetchCalendarTasks } from '@/lib/api';
 import TaskDetailsDrawer from '@/components/TaskDetailsDrawer';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Platform } from 'react-native';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
@@ -19,35 +21,71 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+const getLocalDateString = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseLocalDateString = (dateStr: string) => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
 export default function CalendarScreen() {
   const today = new Date();
-  const [selectedDate, setSelectedDate] = useState(today.toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString(today));
+  const [baseDate, setBaseDate] = useState(today);
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
 
-  // Generate week dates centered around today
+  // Generate week dates centered around baseDate
   const weekDates = useMemo(() => {
     const dates = [];
-    const current = new Date();
-    // Start from 3 days ago to 3 days ahead
-    for (let i = -3; i <= 3; i++) {
-       const d = new Date();
-       d.setDate(current.getDate() + i);
+    // We show a 7-day window. baseDate is the reference.
+    // To make it feel natural, we find the start of the "view" (3 days before baseDate)
+    const viewStart = new Date(baseDate);
+    viewStart.setDate(baseDate.getDate() - 3);
+
+    for (let i = 0; i < 7; i++) {
+       const d = new Date(viewStart);
+       d.setDate(viewStart.getDate() + i);
        dates.push({
          dayName: DAYS[d.getDay()],
          dateNum: d.getDate(),
-         fullDate: d.toISOString().split('T')[0]
+         fullDate: getLocalDateString(d)
        });
     }
     return dates;
-  }, []);
+  }, [baseDate]);
 
   const currentMonthName = useMemo(() => {
-    const d = new Date(selectedDate);
+    const d = parseLocalDateString(selectedDate);
     return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
   }, [selectedDate]);
+
+  const moveWeek = (weeks: number) => {
+    const newBase = new Date(baseDate);
+    newBase.setDate(newBase.getDate() + weeks * 7);
+    setBaseDate(newBase);
+    
+    // Also update selected date to keep it in sync with the center of the view if possible
+    const newSelected = parseLocalDateString(selectedDate);
+    newSelected.setDate(newSelected.getDate() + weeks * 7);
+    setSelectedDate(getLocalDateString(newSelected));
+  };
+
+  const onDateChange = (event: any, date?: Date) => {
+    setShowPicker(false);
+    if (date) {
+      setBaseDate(date);
+      setSelectedDate(getLocalDateString(date));
+    }
+  };
 
   const loadTasks = async () => {
     setLoading(true);
@@ -68,10 +106,8 @@ export default function CalendarScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={AppColors.background} />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+      
+      <View style={styles.fixedHeader}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Calendar</Text>
@@ -81,9 +117,25 @@ export default function CalendarScreen() {
         </View>
 
         {/* Month Selector */}
-        <View style={styles.monthSelector}>
-          <Text style={styles.monthText}>{currentMonthName}</Text>
-          <Ionicons name="chevron-down" size={18} color={AppColors.textMuted} />
+        <View style={styles.monthRow}>
+          <TouchableOpacity 
+            style={styles.monthSelector}
+            onPress={() => setShowPicker(true)}
+            activeOpacity={0.7}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          >
+            <Text style={styles.monthText}>{currentMonthName}</Text>
+            <Ionicons name="chevron-down" size={18} color={AppColors.textMuted} />
+          </TouchableOpacity>
+
+          <View style={styles.weekNav}>
+            <TouchableOpacity onPress={() => moveWeek(-1)} style={styles.navBtn}>
+              <Ionicons name="chevron-back" size={20} color={AppColors.white} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => moveWeek(1)} style={styles.navBtn}>
+              <Ionicons name="chevron-forward" size={20} color={AppColors.white} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Week View */}
@@ -120,6 +172,12 @@ export default function CalendarScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
 
         {/* Timeline */}
         {loading ? (
@@ -142,7 +200,7 @@ export default function CalendarScreen() {
                    }}
                 >
                   <View style={styles.timelineLeft}>
-                    <Text style={styles.timeText}>{task.start_date?.split('-').slice(1).join('/') || '10:00'}</Text>
+                    <Text style={styles.timeText}>{task.start_date?.includes(' ') ? task.start_date.split(' ')[1].slice(0, 5) : 'All Day'}</Text>
                   </View>
                   <View style={styles.timelineDotColumn}>
                     <View style={[
@@ -174,17 +232,24 @@ export default function CalendarScreen() {
           </View>
         )}
 
-        {/* Details Drawer */}
-        <TaskDetailsDrawer 
-          visible={isDetailsVisible}
-          taskId={selectedTaskId}
-          onClose={() => setIsDetailsVisible(false)}
-          onTaskUpdated={loadTasks}
-        />
-
-        {/* Bottom padding for tab bar */}
-        <View style={{ height: 100 }} />
       </ScrollView>
+
+      {showPicker && (
+        <DateTimePicker
+          value={parseLocalDateString(selectedDate)}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={onDateChange}
+        />
+      )}
+
+      {/* Details Drawer */}
+      <TaskDetailsDrawer 
+        visible={isDetailsVisible}
+        taskId={selectedTaskId}
+        onClose={() => setIsDetailsVisible(false)}
+        onTaskUpdated={loadTasks}
+      />
     </View>
   );
 }
@@ -194,8 +259,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: AppColors.background,
   },
-  scrollContent: {
+  fixedHeader: {
     paddingTop: 60,
+    backgroundColor: AppColors.background,
+  },
+  scrollContent: {
+    paddingTop: Spacing.md,
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
@@ -219,17 +289,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: AppColors.border,
   },
+  monthRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+    marginBottom: Spacing.xl,
+  },
   monthSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    paddingHorizontal: Spacing.xl,
-    marginBottom: Spacing.xl,
   },
   monthText: {
     color: AppColors.white,
     fontSize: 16,
     fontWeight: '600',
+  },
+  weekNav: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  navBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: AppColors.cardBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: AppColors.border,
   },
   weekContainer: {
     paddingHorizontal: Spacing.xl,

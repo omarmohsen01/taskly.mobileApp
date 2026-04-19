@@ -9,6 +9,7 @@ import { AppColors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth-store';
 import Toast, { BaseToastProps } from 'react-native-toast-message';
 import { BorderRadius, Spacing } from '@/constants/theme';
+import { hydrateToken } from '@/lib/api';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -74,6 +75,10 @@ function AuthGuard() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    hydrateToken();
+  }, []);
+
   return (
     <AuthProvider>
       <ThemeProvider value={CustomDarkTheme}>

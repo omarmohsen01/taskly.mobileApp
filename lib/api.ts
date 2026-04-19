@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { persistToken, loadPersistedToken } from './auth-store';
 
 let inMemoryToken: string | null = null;
+let isHydrated = false;
 
 function getBaseUrl(): string {
   // If explicitly provided via our new .env file
@@ -32,6 +33,7 @@ export function getToken(): string | null {
 export async function hydrateToken(): Promise<void> {
   const stored = await loadPersistedToken();
   inMemoryToken = stored;
+  isHydrated = true;
 }
 
 export async function setToken(token: string | null) {
@@ -40,6 +42,7 @@ export async function setToken(token: string | null) {
 }
 
 export async function apiPostForm(path: string, data: Record<string, any>): Promise<any> {
+  if (!isHydrated) await hydrateToken();
   const form = new FormData();
   Object.entries(data).forEach(([key, value]) => {
     form.append(key, value);
@@ -67,6 +70,7 @@ export async function apiPostForm(path: string, data: Record<string, any>): Prom
 }
 
 export async function apiGet(path: string): Promise<any> {
+  if (!isHydrated) await hydrateToken();
   const res = await fetch(getBaseUrl() + path.replace(/^\//, ''), {
     headers: {
       Accept: 'application/json',
@@ -274,7 +278,7 @@ export async function fetchTaskDetails(taskId: string | number) {
 }
 
 export async function fetchCalendarTasks(date: string) {
-  return apiGet(`tasks/calendar`, { date });
+  return apiGet(`tasks/calendar?date=${date}`);
 }
 
 export async function updateTask(taskId: string | number, payload: {
