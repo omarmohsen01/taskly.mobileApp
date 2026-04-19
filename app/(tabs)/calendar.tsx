@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
-import { calendarTasks } from '@/constants/dummyData';
+import { fetchCalendarTasks } from '@/lib/api';
+import TaskDetailsDrawer from '@/components/TaskDetailsDrawer';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
@@ -18,20 +20,50 @@ const MONTHS = [
 ];
 
 export default function CalendarScreen() {
-  const [selectedDate, setSelectedDate] = useState(15);
-  const [currentMonth] = useState(1); // February
-  const [currentYear] = useState(2026);
+  const today = new Date();
+  const [selectedDate, setSelectedDate] = useState(today.toISOString().split('T')[0]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const [isDetailsVisible, setIsDetailsVisible] = useState(false);
 
-  // Generate dates for the week view
-  const weekDates = [
-    { day: 'Mon', date: 12 },
-    { day: 'Tue', date: 13 },
-    { day: 'Wed', date: 14 },
-    { day: 'Thu', date: 15 },
-    { day: 'Fri', date: 16 },
-    { day: 'Sat', date: 17 },
-    { day: 'Sun', date: 18 },
-  ];
+  // Generate week dates centered around today
+  const weekDates = useMemo(() => {
+    const dates = [];
+    const current = new Date();
+    // Start from 3 days ago to 3 days ahead
+    for (let i = -3; i <= 3; i++) {
+       const d = new Date();
+       d.setDate(current.getDate() + i);
+       dates.push({
+         dayName: DAYS[d.getDay()],
+         dateNum: d.getDate(),
+         fullDate: d.toISOString().split('T')[0]
+       });
+    }
+    return dates;
+  }, []);
+
+  const currentMonthName = useMemo(() => {
+    const d = new Date(selectedDate);
+    return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  }, [selectedDate]);
+
+  const loadTasks = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchCalendarTasks(selectedDate);
+      setTasks(res?.data ?? res);
+    } catch (e) {
+      console.error('[Calendar] Load Error:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTasks();
+  }, [selectedDate]);
 
   return (
     <View style={styles.container}>
@@ -50,9 +82,7 @@ export default function CalendarScreen() {
 
         {/* Month Selector */}
         <View style={styles.monthSelector}>
-          <Text style={styles.monthText}>
-            {MONTHS[currentMonth]} {currentYear}
-          </Text>
+          <Text style={styles.monthText}>{currentMonthName}</Text>
           <Ionicons name="chevron-down" size={18} color={AppColors.textMuted} />
         </View>
 
@@ -64,63 +94,93 @@ export default function CalendarScreen() {
         >
           {weekDates.map((item) => (
             <TouchableOpacity
-              key={item.date}
+              key={item.fullDate}
               style={[
                 styles.dayCard,
-                selectedDate === item.date && styles.dayCardSelected,
+                selectedDate === item.fullDate && styles.dayCardSelected,
               ]}
-              onPress={() => setSelectedDate(item.date)}
+              onPress={() => setSelectedDate(item.fullDate)}
             >
               <Text
                 style={[
                   styles.dayText,
-                  selectedDate === item.date && styles.dayTextSelected,
+                  selectedDate === item.fullDate && styles.dayTextSelected,
                 ]}
               >
-                {item.day}
+                {item.dayName}
               </Text>
               <Text
                 style={[
                   styles.dateText,
-                  selectedDate === item.date && styles.dateTextSelected,
+                  selectedDate === item.fullDate && styles.dateTextSelected,
                 ]}
               >
-                {item.date}
+                {item.dateNum}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
         {/* Timeline */}
-        <View style={styles.timeline}>
-          {calendarTasks.map((task, index) => (
-            <View key={task.id} style={styles.timelineItem}>
-              <View style={styles.timelineLeft}>
-                <Text style={styles.timeText}>{task.time}</Text>
+        {loading ? (
+          <ActivityIndicator size="large" color={AppColors.accent} style={{ marginTop: 50 }} />
+        ) : (
+          <View style={styles.timeline}>
+            {tasks.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="calendar-outline" size={48} color={AppColors.textMuted} />
+                <Text style={styles.emptyText}>No tasks for this day</Text>
               </View>
-              <View style={styles.timelineDotColumn}>
-                <View style={[
-                  styles.timelineDot,
-                  index === 0 && { backgroundColor: AppColors.accent },
-                ]} />
-                {index < calendarTasks.length - 1 && <View style={styles.timelineLine} />}
-              </View>
-              <View style={styles.timelineCard}>
-                <Text style={styles.timelineTaskTitle}>{task.title}</Text>
-                <Text style={styles.timelineTaskDesc}>{task.description}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Floating Task Pill */}
-        <View style={styles.floatingPill}>
-          <View style={styles.pillAccent} />
-          <View style={styles.pillContent}>
-            <Text style={styles.pillTitle}>Design Landing Page</Text>
-            <Text style={styles.pillDesc}>Design and share on dribbble</Text>
+            ) : (
+              tasks.map((task, index) => (
+                <TouchableOpacity 
+                   key={task.id} 
+                   style={styles.timelineItem}
+                   onPress={() => {
+                     setSelectedTaskId(task.id);
+                     setIsDetailsVisible(true);
+                   }}
+                >
+                  <View style={styles.timelineLeft}>
+                    <Text style={styles.timeText}>{task.start_date?.split('-').slice(1).join('/') || '10:00'}</Text>
+                  </View>
+                  <View style={styles.timelineDotColumn}>
+                    <View style={[
+                      styles.timelineDot,
+                      index === 0 && { backgroundColor: AppColors.accent, shadowColor: AppColors.accent, shadowOpacity: 0.5, shadowRadius: 5, elevation: 5 },
+                    ]} />
+                    {index < tasks.length - 1 && <View style={styles.timelineLine} />}
+                  </View>
+                  <View style={styles.timelineCard}>
+                    <Text style={styles.timelineTaskTitle}>{task.title}</Text>
+                    <Text style={styles.timelineTaskDesc} numberOfLines={2}>
+                      {task.descriptions || 'Plan and execute this task to perfection.'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
           </View>
-        </View>
+        )}
+
+        {/* Floating Task Header Pill (Matches Design Sidebar) */}
+        {!loading && tasks.length > 0 && (
+          <View style={styles.floatingPill}>
+            <View style={styles.pillAccent} />
+            <View style={styles.pillContent}>
+              <Text style={styles.pillTitle}>{tasks[0].title}</Text>
+              <Text style={styles.pillDesc}>{tasks[0].descriptions || 'Focus on your priority'}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Details Drawer */}
+        <TaskDetailsDrawer 
+          visible={isDetailsVisible}
+          taskId={selectedTaskId}
+          onClose={() => setIsDetailsVisible(false)}
+          onTaskUpdated={loadTasks}
+        />
 
         {/* Bottom padding for tab bar */}
         <View style={{ height: 100 }} />
@@ -256,9 +316,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
   },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 60,
+    gap: 10,
+  },
+  emptyText: {
+    color: AppColors.textMuted,
+    fontSize: 14,
+    fontWeight: '500',
+  },
   timelineTaskDesc: {
     color: AppColors.textMuted,
     fontSize: 12,
+    lineHeight: 18,
   },
   // Floating Pill
   floatingPill: {

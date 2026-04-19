@@ -273,6 +273,10 @@ export async function fetchTaskDetails(taskId: string | number) {
   return apiGet(`tasks/${taskId}`);
 }
 
+export async function fetchCalendarTasks(date: string) {
+  return apiGet(`tasks/calendar`, { date });
+}
+
 export async function updateTask(taskId: string | number, payload: {
   title?: string;
   descriptions?: string;
