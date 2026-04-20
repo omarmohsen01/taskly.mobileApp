@@ -10,6 +10,9 @@ import { AuthProvider, useAuth } from '@/lib/auth-store';
 import Toast, { BaseToastProps } from 'react-native-toast-message';
 import { BorderRadius, Spacing } from '@/constants/theme';
 import { hydrateToken } from '@/lib/api';
+import AIChatAssistant from '@/components/AIChatAssistant';
+import AIChatFAB from '@/components/AIChatFAB';
+import { useState } from 'react';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -72,6 +75,24 @@ function AuthGuard() {
   }, [token, isLoading, segments]);
 
   return null;
+}
+
+function GlobalAIWrapper() {
+  const { token } = useAuth();
+  const [isAIChatVisible, setIsAIChatVisible] = useState(false);
+
+  if (!token) return null;
+
+  return (
+    <>
+      <AIChatFAB onPress={() => setIsAIChatVisible(true)} />
+      <AIChatAssistant 
+        visible={isAIChatVisible} 
+        onClose={() => setIsAIChatVisible(false)} 
+        mode="fullscreen" 
+      />
+    </>
+  );
 }
 
 export default function RootLayout() {
@@ -148,6 +169,7 @@ export default function RootLayout() {
         </Stack>
         <StatusBar style="light" />
         <Toast config={toastConfig} />
+        <GlobalAIWrapper />
       </ThemeProvider>
     </AuthProvider>
   );

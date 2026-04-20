@@ -346,3 +346,13 @@ export async function signOut() {
     }).catch(e => console.error('Background signout error:', e));
   }
 }
+
+export async function sendMessageToAI(message: string, sessionId?: number | string) {
+  const data: Record<string, any> = { message };
+  if (sessionId) data.session_id = String(sessionId);
+  return apiPostForm('ai/chat', data);
+}
+
+export async function fetchAISessions() {
+  return apiGet('ai/sessions');
+}
