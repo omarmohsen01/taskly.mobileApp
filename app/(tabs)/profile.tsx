@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,17 +7,19 @@ import {
   TouchableOpacity,
   Image,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
-import { currentUser, taskProgress } from '@/constants/dummyData';
+import { taskProgress } from '@/constants/dummyData';
 import { useAuth } from '@/lib/auth-store';
-import { signOut } from '@/lib/api';
+import { signOut, fetchProfile } from '@/lib/api';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
-const menuItems: { icon: IoniconsName; label: string; subtitle?: string }[] = [
-  { icon: 'person-outline', label: 'Edit Profile', subtitle: 'Update your information' },
+const menuItems: { icon: IoniconsName; label: string; subtitle?: string; route?: string }[] = [
+  { icon: 'person-outline', label: 'Edit Profile', subtitle: 'Update your information', route: '/edit-profile' },
   { icon: 'notifications-outline', label: 'Notifications', subtitle: 'Manage notifications' },
   { icon: 'shield-outline', label: 'Privacy & Security', subtitle: 'Password, 2FA' },
   { icon: 'color-palette-outline', label: 'Appearance', subtitle: 'Theme, colors' },
@@ -27,15 +29,40 @@ const menuItems: { icon: IoniconsName; label: string; subtitle?: string }[] = [
 ];
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { saveToken } = useAuth();
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [])
+  );
+
+  const loadProfile = async () => {
+    try {
+      const resp = await fetchProfile();
+      setUser(resp?.data || resp);
+    } catch (e) {
+      console.error('Load profile error:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
-    // Optimistically clear the token in React state to trigger instant redirect
     await saveToken(null);
-    // Call the signout API in the background (already optimized in api.ts)
     signOut().catch(e => console.error('Signout error:', e));
-    // Final redirect occurs automatically via AuthGuard
   };
+
+  if (loading && !user) {
+    return (
+      <View style={styles.centerScreen}>
+        <ActivityIndicator color={AppColors.accent} size="large" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -47,21 +74,18 @@ export default function ProfileScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity style={styles.settingsButton}>
-            <Ionicons name="settings-outline" size={22} color={AppColors.white} />
-          </TouchableOpacity>
         </View>
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <Image
-            source={{ uri: currentUser.avatar }}
+            source={{ uri: user?.avatar || 'https://ui-avatars.com/api/?name=' + (user?.first_name || 'User') }}
             style={styles.profileAvatar}
           />
           <Text style={styles.profileName}>
-            {currentUser.first_name} {currentUser.last_name}
+            {user?.first_name} {user?.last_name}
           </Text>
-          <Text style={styles.profileEmail}>{currentUser.email}</Text>
+          <Text style={styles.profileEmail}>{user?.email}</Text>
 
           {/* Stats */}
           <View style={styles.statsRow}>
@@ -85,7 +109,11 @@ export default function ProfileScreen() {
         {/* Menu Items */}
         <View style={styles.menuSection}>
           {menuItems.map((item, index) => (
-            <TouchableOpacity key={index} style={styles.menuItem}>
+            <TouchableOpacity 
+              key={index} 
+              style={styles.menuItem}
+              onPress={() => item.route && router.push(item.route as any)}
+            >
               <View style={styles.menuIconContainer}>
                 <Ionicons name={item.icon} size={22} color={AppColors.accent} />
               </View>

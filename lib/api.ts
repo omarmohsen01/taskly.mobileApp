@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import { persistToken, loadPersistedToken } from './auth-store';
 
 let inMemoryToken: string | null = null;
-let isHydrated = false;
+export let isHydrated = false;
 
 function getBaseUrl(): string {
   // If explicitly provided via our new .env file
@@ -44,9 +44,23 @@ export async function setToken(token: string | null) {
 export async function apiPostForm(path: string, data: Record<string, any>): Promise<any> {
   if (!isHydrated) await hydrateToken();
   const form = new FormData();
-  Object.entries(data).forEach(([key, value]) => {
-    form.append(key, value);
-  });
+  
+  for (const key in data) {
+    const value = data[key];
+    if (value && typeof value === 'object' && value.uri) {
+      try {
+        const response = await fetch(value.uri);
+        const blob = await response.blob();
+        form.append(key, blob, value.name || 'file.jpg');
+      } catch (e) {
+        console.error('Blob conversion error:', e);
+        // Fallback to direct append if blob fails
+        form.append(key, value as any);
+      }
+    } else if (value !== null && value !== undefined) {
+      form.append(key, String(value));
+    }
+  }
   const res = await fetch(getBaseUrl() + path.replace(/^\//, ''), {
     method: 'POST',
     headers: {
@@ -108,6 +122,16 @@ export async function signUp(payload: {
 
 export async function fetchProfile() {
   return apiGet('auth/profile');
+}
+
+export async function updateProfile(payload: {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  avatar?: any;
+}) {
+  return apiPostForm('auth/profile/update', payload);
 }
 
 export async function fetchWorkspaces() {

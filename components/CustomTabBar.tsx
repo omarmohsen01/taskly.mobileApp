@@ -19,15 +19,13 @@ type MoreItem = {
   icon: TabIconName;
   label: string;
   color: string;
+  route?: string;
 };
 
 const MORE_ITEMS: MoreItem[] = [
   { icon: 'document-text', label: 'Docs', color: '#4285F4' },
-  { icon: 'play-circle', label: 'Clips', color: '#FF0000' },
-  { icon: 'bar-chart', label: 'Dashboards', color: '#9C27B0' },
-  { icon: 'checkbox', label: 'Forms', color: '#2196F3' },
-  { icon: 'sparkles', label: 'Brain', color: '#FF6B6B' },
-  { icon: 'planet', label: 'Spaces', color: '#7C4DFF' },
+  { icon: 'sparkles', label: 'Brain', color: '#FF6B6B', route: 'ai-assistant' },
+  { icon: 'planet', label: 'Spaces', color: '#7C4DFF', route: 'spaces' },
   { icon: 'reader', label: 'Notepad', color: '#FF9800' },
   { icon: 'calendar-number', label: 'Planner', color: '#E91E63' },
   { icon: 'chatbubbles', label: 'Chats', color: '#00897B' },
@@ -52,7 +50,12 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                       key={idx}
                       style={styles.moreItem}
                       activeOpacity={0.7}
-                      onPress={() => setShowMoreGrid(false)}
+                      onPress={() => {
+                        setShowMoreGrid(false);
+                        if (item.route) {
+                          navigation.navigate(item.route);
+                        }
+                      }}
                     >
                       <View style={styles.moreIconWrap}>
                         <Ionicons name={item.icon} size={26} color={item.color} />
@@ -69,9 +72,10 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
 
       <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         <View style={styles.tabBar}>
-          {state.routes.map((route, index) => {
+          {state.routes.filter(r => r.name !== 'spaces').map((route, index) => {
             const { options } = descriptors[route.key];
-            const isFocused = state.index === index;
+            const activeRouteName = state.routes[state.index].name;
+            const isFocused = activeRouteName === route.name || (route.name === 'team' && activeRouteName === 'spaces');
             const isCenter = index === centerIndex;
             const isMore = route.name === 'team';
 
@@ -125,9 +129,9 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                 <Ionicons
                   name={isMore && showMoreGrid ? iconSet.active : iconName}
                   size={24}
-                  color={(isMore && showMoreGrid) ? AppColors.accent : (isFocused ? AppColors.accent : AppColors.textMuted)}
+                  color={(isMore && (showMoreGrid || activeRouteName === 'spaces')) ? AppColors.accent : (isFocused ? AppColors.accent : AppColors.textMuted)}
                 />
-                {(isFocused || (isMore && showMoreGrid)) && <View style={styles.activeIndicator} />}
+                {(isFocused || (isMore && (showMoreGrid || activeRouteName === 'spaces'))) && <View style={styles.activeIndicator} />}
               </TouchableOpacity>
             );
           })}

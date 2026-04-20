@@ -1,6 +1,6 @@
 import { currentUser, folders, labels, lists, spaces, tasks, users } from '@/constants/dummyData';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
-import { fetchStatistics, fetchWorkspaces, fetchSpaces, StatFilter } from '@/lib/api';
+import { fetchStatistics, fetchWorkspaces, fetchSpaces, fetchProfile, StatFilter } from '@/lib/api';
 import { useAuth } from '@/lib/auth-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -116,6 +116,7 @@ export default function HomeScreen() {
   const [spacesList, setSpacesList] = useState<Space[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
 
   // Statistics state
   const [stats, setStats] = useState<Statistics | null>(null);
@@ -189,6 +190,7 @@ export default function HomeScreen() {
       loadStats(selectedWorkspaceId, filter);
       loadSpaces(selectedWorkspaceId);
       loadWorkspaces();
+      fetchProfile().then(p => setProfile(p?.data || p)).catch(e => console.error(e));
     }, [token, activeTab, selectedWorkspaceId])
   );
 
@@ -273,7 +275,7 @@ export default function HomeScreen() {
               <Ionicons name="notifications-outline" size={18} color={AppColors.textMuted} />
             </TouchableOpacity>
             <Image
-              source={{ uri: currentUser.avatar }}
+              source={{ uri: profile?.avatar || 'https://ui-avatars.com/api/?name=' + (profile?.first_name || 'User') }}
               style={styles.workspaceAvatar}
             />
           </View>
