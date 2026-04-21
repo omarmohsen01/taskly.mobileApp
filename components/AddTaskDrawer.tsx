@@ -37,8 +37,8 @@ import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-g
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
-const SNAP_BASE = SCREEN_HEIGHT * 0.55; 
-const SNAP_FULL = SCREEN_HEIGHT * 0.15; 
+const SNAP_BASE = SCREEN_HEIGHT * 0.2; 
+const SNAP_FULL = SCREEN_HEIGHT * 0.1; 
 
 const priorities = [
   { label: 'Low', value: 'low', color: '#8b8b99' },
@@ -94,7 +94,7 @@ export default function AddTaskDrawer({ visible, onClose, defaultBoardId, defaul
   // Start Animation IMMEDIATELY
   useEffect(() => {
     if (visible) {
-      translateY.value = withTiming(SNAP_BASE, { duration: 250 });
+      translateY.value = withTiming(SNAP_FULL, { duration: 300 });
       // Defer data loading slightly so it doesn't block the animation frames
       setTimeout(() => loadData(), 100);
     } else {

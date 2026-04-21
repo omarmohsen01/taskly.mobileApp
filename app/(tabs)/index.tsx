@@ -12,13 +12,13 @@ import {
   Modal,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -77,7 +77,7 @@ function NoWorkspaceScreen() {
   const router = useRouter();
   return (
     <View style={noWsStyles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={AppColors.background} />
+      <StatusBar style="light" />
       <View style={noWsStyles.content}>
         <View style={noWsStyles.iconWrap}>
           <Ionicons name="grid-outline" size={56} color={AppColors.accent} />
@@ -240,7 +240,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={AppColors.background} />
+      <StatusBar style="light" />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}

@@ -1,11 +1,10 @@
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   Dimensions,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,29 +16,112 @@ import {
   Platform,
   ActivityIndicator
 } from 'react-native';
-import { fetchTasks } from '@/lib/api';
+import { StatusBar } from 'expo-status-bar';
+import Toast from 'react-native-toast-message';
+import { fetchTasks, updateTask } from '@/lib/api';
 import AddTaskDrawer from '@/components/AddTaskDrawer';
 import TaskDetailsDrawer from '@/components/TaskDetailsDrawer';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring, 
+  runOnJS,
+  withTiming,
+  scrollTo,
+  useAnimatedRef
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const COLOR_PALETTE = ['#8b8b99', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export default function BoardScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const kanbanScrollRef = useAnimatedRef<Animated.ScrollView>();
+  const listScrollRef = useAnimatedRef<Animated.ScrollView>();
   const { id, boardName, boardType } = useLocalSearchParams<{ id: string, boardName: string, boardType: string }>();
   
-  // Default to kanban if not passed
-  const type = boardType || 'kanban'; 
+  // State for view type
+  const [viewType, setViewType] = useState<'kanban' | 'list'>(boardType === 'list' ? 'list' : 'kanban'); 
 
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | number | null>(null);
   const [selectedColumnId, setSelectedColumnId] = useState<string | number | undefined>(undefined);
 
-  
   const [columns, setColumns] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [expandedCols, setExpandedCols] = useState<Record<number, boolean>>({});
+
+  // Drag and Drop State
+  const [draggingTask, setDraggingTask] = useState<any>(null);
+  const [columnLayouts, setColumnLayouts] = useState<Record<number, { x: number, width: number, id: number }>>({});
+  const [listSectionLayouts, setListSectionLayouts] = useState<Record<number, { y: number, height: number, id: number }>>({});
+  const dragX = useSharedValue(0);
+  const dragY = useSharedValue(0);
+  const scrollX = useSharedValue(0);
+  const scrollY = useSharedValue(0);
+  const isDragging = useSharedValue(false);
+  const activeColId = useSharedValue<number | null>(null);
+
+  // Helper for haptics from JS thread
+  const triggerImpact = (style: Haptics.ImpactFeedbackStyle) => {
+    Haptics.impactAsync(style);
+  };
+  const triggerNotification = (type: Haptics.NotificationFeedbackType) => {
+    Haptics.notificationAsync(type);
+  };
+
+  const onColumnLayout = (colId: number, e: any) => {
+    const { x, width } = e.nativeEvent.layout;
+    setColumnLayouts(prev => ({ ...prev, [colId]: { x, width, id: colId } }));
+  };
+
+  const onListSectionLayout = (colId: number, e: any) => {
+    const { y, height } = e.nativeEvent.layout;
+    setListSectionLayouts(prev => ({ ...prev, [colId]: { y, height, id: colId } }));
+  };
+
+  const handleTaskMove = async (taskId: number, newColId: number) => {
+    // Optimistic update
+    setColumns(prev => {
+      const newCols = [...prev];
+      let movingTask: any = null;
+      
+      // Remove from old column
+      newCols.forEach(col => {
+        const idx = col.tasks?.findIndex((t: any) => t.id === taskId);
+        if (idx !== -1) {
+          movingTask = col.tasks[idx];
+          col.tasks.splice(idx, 1);
+        }
+      });
+
+      // Add to new column
+      if (movingTask) {
+        const targetCol = newCols.find(col => col.id === newColId);
+        if (targetCol) {
+          if (!targetCol.tasks) targetCol.tasks = [];
+          targetCol.tasks.push({ ...movingTask, board_column_id: newColId });
+        }
+      }
+      return newCols;
+    });
+
+    // API Call
+    try {
+      await updateTask(taskId, { board_column_id: newColId });
+      runOnJS(Toast.show)({ type: 'success', text1: 'Task Moved!', text2: 'The task position has been updated.' });
+    } catch (err) {
+      console.error('Failed to move task:', err);
+      runOnJS(Toast.show)({ type: 'error', text1: 'Update Failed', text2: 'Could not sync task with server.' });
+      loadBoardData(); // Rollback
+    }
+  };
 
   const loadBoardData = useCallback(async () => {
     if (!id) return;
@@ -47,6 +129,12 @@ export default function BoardScreen() {
       const res = await fetchTasks(id);
       if (res?.data) {
         setColumns(res.data);
+        // Initialize all columns as expanded by default
+        const initialExpanded: Record<number, boolean> = {};
+        res.data.forEach((col: any) => {
+          initialExpanded[col.id] = true;
+        });
+        setExpandedCols(initialExpanded);
       }
     } catch (e) {
       console.error(e);
@@ -73,18 +161,25 @@ export default function BoardScreen() {
         <View>
           <Text style={styles.headerTitle}>Taskly</Text>
           <View style={styles.headerSubtitleRow}>
-            <Ionicons name={type === 'list' ? 'list' : 'grid'} size={12} color={AppColors.textMuted} />
-            <Text style={styles.headerSubtitle}>{boardName || 'Board'} ▾</Text>
+            <Ionicons name={viewType === 'list' ? 'list' : 'grid'} size={12} color={AppColors.textMuted} />
+            <Text style={styles.headerSubtitle}>{boardName || 'Board'}</Text>
           </View>
         </View>
       </View>
       <View style={styles.headerRight}>
-        <TouchableOpacity style={styles.iconBtn}>
-          <Ionicons name="share-social-outline" size={22} color={AppColors.white} />
+        <TouchableOpacity 
+          style={[styles.viewToggleBtn, viewType === 'kanban' && styles.viewToggleBtnActive]} 
+          onPress={() => setViewType('kanban')}
+        >
+          <Ionicons name="grid-outline" size={20} color={viewType === 'kanban' ? AppColors.white : AppColors.textMuted} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.iconBtn}>
-          <Ionicons name="chatbubble-outline" size={22} color={AppColors.white} />
+        <TouchableOpacity 
+          style={[styles.viewToggleBtn, viewType === 'list' && styles.viewToggleBtnActive]} 
+          onPress={() => setViewType('list')}
+        >
+          <Ionicons name="list-outline" size={20} color={viewType === 'list' ? AppColors.white : AppColors.textMuted} />
         </TouchableOpacity>
+        <View style={styles.headerRightDivider} />
         <TouchableOpacity style={styles.iconBtn}>
           <Ionicons name="ellipsis-horizontal" size={22} color={AppColors.white} />
         </TouchableOpacity>
@@ -94,181 +189,349 @@ export default function BoardScreen() {
 
   const renderKanban = () => {
     return (
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={SCREEN_WIDTH * 0.85 + Spacing.md}
-        decelerationRate="fast"
-        contentContainerStyle={styles.kanbanScroll}
-      >
-        {columns.map((col, idx) => {
-          const colTasks = col.tasks || [];
-          const colColor = COLOR_PALETTE[idx % COLOR_PALETTE.length];
-          return (
-            <View key={`col-${col.id}`} style={styles.kanbanColumn}>
-              <View style={styles.colHeaderRow}>
-                <View style={[styles.colHeaderBadge, { backgroundColor: colColor + '33' }]}>
-                  <Text style={[styles.colHeaderText, { color: colColor }]}>
-                    {col.name?.toUpperCase()}
-                  </Text>
+      <View style={{ flex: 1 }}>
+        <Animated.ScrollView
+          ref={kanbanScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={SCREEN_WIDTH * 0.85 + Spacing.md}
+          decelerationRate="fast"
+          contentContainerStyle={styles.kanbanScroll}
+          scrollEnabled={!draggingTask}
+          onScroll={(e) => { scrollX.value = e.nativeEvent.contentOffset.x; }}
+          scrollEventThrottle={16}
+        >
+          {columns.map((col, idx) => {
+            const colTasks = col.tasks || [];
+            const colColor = COLOR_PALETTE[idx % COLOR_PALETTE.length];
+            
+            return (
+              <View 
+                key={`col-${col.id}`} 
+                style={styles.kanbanColumn}
+                onLayout={(e) => onColumnLayout(col.id, e)}
+              >
+                <View style={styles.colHeaderRow}>
+                  <View style={[styles.colHeaderBadge, { backgroundColor: colColor + '33' }]}>
+                    <Text style={[styles.colHeaderText, { color: colColor }]}>
+                      {col.name?.toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.colHeaderActions}>
+                    <TouchableOpacity
+                      style={styles.colBtn}
+                      onPress={() => {
+                        setSelectedColumnId(col.id);
+                        setIsDrawerVisible(true);
+                      }}
+                    >
+                      <Ionicons name="add" size={20} color={AppColors.textMuted} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <View style={styles.colHeaderActions}>
-                  <TouchableOpacity 
-                    style={styles.colBtn} 
+
+                <ScrollView 
+                  showsVerticalScrollIndicator={false} 
+                  style={styles.kanbanList}
+                  scrollEnabled={!draggingTask}
+                >
+                  {colTasks.map((task: any) => {
+                    const taskGesture = Gesture.Pan()
+                      .activateAfterLongPress(300)
+                      .onStart((e) => {
+                        isDragging.value = true;
+                        dragX.value = e.absoluteX;
+                        dragY.value = e.absoluteY;
+                        runOnJS(triggerImpact)(Haptics.ImpactFeedbackStyle.Medium);
+                        runOnJS(setDraggingTask)(task);
+                      })
+                      .onUpdate((e) => {
+                        dragX.value = e.absoluteX;
+                        dragY.value = e.absoluteY;
+
+                        // Auto-scroll logic
+                        const scrollThreshold = 60;
+                        const scrollStep = 15;
+                        if (e.absoluteX > SCREEN_WIDTH - scrollThreshold) {
+                           scrollTo(kanbanScrollRef, scrollX.value + scrollStep, 0, false);
+                        } else if (e.absoluteX < scrollThreshold) {
+                           scrollTo(kanbanScrollRef, scrollX.value - scrollStep, 0, false);
+                        }
+
+                        // Find target column based on x
+                        let foundColId = null;
+                        const adjustedX = e.absoluteX + scrollX.value;
+                        
+                        Object.values(columnLayouts).forEach(layout => {
+                          if (adjustedX > layout.x && adjustedX < layout.x + layout.width) {
+                            foundColId = layout.id;
+                          }
+                        });
+                        if (activeColId.value !== foundColId && foundColId !== null) {
+                           runOnJS(triggerImpact)(Haptics.ImpactFeedbackStyle.Light);
+                        }
+                        activeColId.value = foundColId;
+                      })
+                      .onEnd(() => {
+                        if (activeColId.value && activeColId.value !== task.board_column_id) {
+                          runOnJS(triggerNotification)(Haptics.NotificationFeedbackType.Success);
+                          runOnJS(handleTaskMove)(task.id, activeColId.value);
+                        }
+                        isDragging.value = false;
+                        runOnJS(setDraggingTask)(null);
+                      });
+
+                    return (
+                      <GestureDetector key={`task-${task.id}`} gesture={taskGesture}>
+                        <TouchableOpacity
+                          style={[
+                            styles.taskCardItem, 
+                            draggingTask?.id === task.id && { opacity: 0.3 }
+                          ]}
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            setSelectedTaskId(task.id);
+                            setIsDetailsVisible(true);
+                          }}
+                        >
+                          <View style={[styles.taskCheckbox, { backgroundColor: colColor }]} />
+                          <Text style={styles.taskCardText} numberOfLines={2}>{task.title}</Text>
+                        </TouchableOpacity>
+                      </GestureDetector>
+                    );
+                  })}
+
+                  <TouchableOpacity
+                    style={styles.addTaskBtn}
                     onPress={() => {
                       setSelectedColumnId(col.id);
                       setIsDrawerVisible(true);
                     }}
                   >
-                    <Ionicons name="add" size={20} color={AppColors.textMuted}/>
+                    <Ionicons name="add" size={18} color={AppColors.textMuted} />
+                    <Text style={styles.addTaskText}>Add Task</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.colBtn}><Ionicons name="ellipsis-horizontal" size={20} color={AppColors.textMuted}/></TouchableOpacity>
-                </View>
+                </ScrollView>
               </View>
-
-              <ScrollView showsVerticalScrollIndicator={false} style={styles.kanbanList}>
-                {colTasks.map((task: any) => (
-                  <TouchableOpacity 
-                    key={`task-${task.id}`} 
-                    style={styles.taskCardItem} 
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      setSelectedTaskId(task.id);
-                      setIsDetailsVisible(true);
-                    }}
-                  >
-                     <View style={[styles.taskCheckbox, { backgroundColor: colColor }]} />
-                     <Text style={styles.taskCardText} numberOfLines={2}>{task.title}</Text>
-                  </TouchableOpacity>
-                ))}
-                
-                <TouchableOpacity 
-                  style={styles.addTaskBtn} 
-                  onPress={() => {
-                    setSelectedColumnId(col.id);
-                    setIsDrawerVisible(true);
-                  }}
-                >
-                   <Ionicons name="add" size={18} color={AppColors.textMuted} />
-                   <Text style={styles.addTaskText}>Add Task</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          );
-        })}
-      </ScrollView>
+            );
+          })}
+        </Animated.ScrollView>
+      </View>
     );
   };
 
   const renderList = () => {
     return (
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.listScroll}>
+      <Animated.ScrollView 
+        ref={listScrollRef}
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.listScroll}
+        scrollEnabled={!draggingTask}
+        onScroll={(e) => { scrollY.value = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
+      >
         <View style={styles.listTopTitleRow}>
-            <Ionicons name="chevron-down" size={18} color={AppColors.white} />
-            <View style={styles.headerAppIconSmall}>
-              <View style={styles.headerAppIconInnerSmall} />
-            </View>
-            <Text style={styles.listTopTitle}>Taskly</Text>
+          <Ionicons name="chevron-down" size={18} color={AppColors.white} />
+          <View style={styles.headerAppIconSmall}>
+            <View style={styles.headerAppIconInnerSmall} />
+          </View>
+          <Text style={styles.listTopTitle}>Taskly</Text>
         </View>
-
         {columns.map((col, idx) => {
           const colTasks = col.tasks || [];
           const colColor = COLOR_PALETTE[idx % COLOR_PALETTE.length];
-          if (colTasks.length === 0) return null;
+          const isExpanded = expandedCols[col.id] !== false;
           
           return (
-            <View key={`list-col-${col.id}`} style={styles.listSection}>
-               <View style={styles.listSectionHeader}>
-                  <Ionicons name="caret-down" size={14} color={AppColors.textMuted} style={{marginRight: Spacing.sm}} />
-                  <View style={[styles.listColBadge, { backgroundColor: colColor }]}>
-                     <Text style={styles.listColBadgeText}>{col.name?.toUpperCase()}</Text>
-                  </View>
-                  <Text style={styles.listTaskCount}>{colTasks.length} Tasks</Text>
-               </View>
+            <View 
+              key={`list-col-${col.id}`} 
+              style={styles.listSection}
+              onLayout={(e) => onListSectionLayout(col.id, e)}
+            >
+              <TouchableOpacity
+                style={styles.listSectionHeader}
+                activeOpacity={0.7}
+                onPress={() => setExpandedCols(prev => ({ ...prev, [col.id]: !isExpanded }))}
+              >
+                <Ionicons
+                  name={isExpanded ? "caret-down" : "caret-forward"}
+                  size={14}
+                  color={AppColors.textMuted}
+                  style={{ marginRight: Spacing.sm }}
+                />
+                <View style={[styles.listColBadge, { backgroundColor: colColor }]}>
+                  <Text style={styles.listColBadgeText}>{col.name?.toUpperCase()}</Text>
+                </View>
+                <Text style={styles.listTaskCount}>{colTasks.length} Tasks</Text>
+              </TouchableOpacity>
+              
+              {isExpanded && (
+                <View>
+                  {colTasks.map((task: any, index: number) => {
+                    const listTaskGesture = Gesture.Pan()
+                      .activateAfterLongPress(300)
+                      .onStart((e) => {
+                        isDragging.value = true;
+                        dragX.value = e.absoluteX;
+                        dragY.value = e.absoluteY;
+                        runOnJS(triggerImpact)(Haptics.ImpactFeedbackStyle.Medium);
+                        runOnJS(setDraggingTask)(task);
+                      })
+                      .onUpdate((e) => {
+                        dragX.value = e.absoluteX;
+                        dragY.value = e.absoluteY;
 
-               {colTasks.map((task: any, index: number) => (
-                 <TouchableOpacity 
-                   key={`list-task-${task.id}`} 
-                   style={[styles.listRow, index === colTasks.length - 1 && { borderBottomWidth: 0 }]} 
-                   activeOpacity={0.7}
-                   onPress={() => {
-                     setSelectedTaskId(task.id);
-                     setIsDetailsVisible(true);
-                   }}
-                 >
-                    <View style={styles.listRowLeft}>
-                      <View style={[styles.taskCheckbox, { backgroundColor: colColor, width: 14, height: 14, borderRadius: 2 }]} />
-                      <Text style={styles.listRowText} numberOfLines={1}>{task.title}</Text>
-                    </View>
-                    <View style={styles.listRowRight}>
-                       {task.creator?.full_name ? (
-                          <View style={styles.avatarCircle}>
-                             <Text style={styles.avatarText}>{task.creator.first_name?.[0]}{task.creator.last_name?.[0] || ''}</Text>
+                        // Vertical Auto-scroll logic
+                        const scrollThreshold = 100;
+                        const scrollStep = 15;
+                        if (e.absoluteY > SCREEN_HEIGHT - scrollThreshold) {
+                           scrollTo(listScrollRef, 0, scrollY.value + scrollStep, false);
+                        } else if (e.absoluteY < 150 + scrollThreshold) {
+                           scrollTo(listScrollRef, 0, scrollY.value - scrollStep, false);
+                        }
+
+                        // Find target column based on y
+                        let foundColId = null;
+                        const adjustedY = e.absoluteY + scrollY.value - 100; // Subtract header height approx
+                        
+                        Object.values(listSectionLayouts).forEach(layout => {
+                          if (adjustedY > layout.y && adjustedY < layout.y + layout.height) {
+                            foundColId = layout.id;
+                          }
+                        });
+                        
+                        if (activeColId.value !== foundColId && foundColId !== null) {
+                           runOnJS(triggerImpact)(Haptics.ImpactFeedbackStyle.Light);
+                        }
+                        activeColId.value = foundColId;
+                      })
+                      .onEnd(() => {
+                        if (activeColId.value && activeColId.value !== task.board_column_id) {
+                          runOnJS(triggerNotification)(Haptics.NotificationFeedbackType.Success);
+                          runOnJS(handleTaskMove)(task.id, activeColId.value);
+                        }
+                        isDragging.value = false;
+                        runOnJS(setDraggingTask)(null);
+                      });
+
+                    return (
+                      <GestureDetector key={`list-task-${task.id}`} gesture={listTaskGesture}>
+                        <TouchableOpacity
+                          style={[
+                            styles.listRow, 
+                            index === colTasks.length - 1 && { borderBottomWidth: 0 },
+                            draggingTask?.id === task.id && { opacity: 0.3 }
+                          ]}
+                          activeOpacity={1}
+                          onPress={() => {
+                            setSelectedTaskId(task.id);
+                            setIsDetailsVisible(true);
+                          }}
+                        >
+                          <View style={styles.listRowLeft}>
+                            <View style={[styles.taskCheckbox, { backgroundColor: colColor, width: 14, height: 14, borderRadius: 2 }]} />
+                            <Text style={styles.listRowText} numberOfLines={1}>{task.title}</Text>
                           </View>
-                       ) : null}
+                          <View style={styles.listRowRight}>
+                            {task.creator?.full_name ? (
+                              <View style={styles.avatarCircle}>
+                                <Text style={styles.avatarText}>
+                                  {task.creator.first_name?.[0] || ""}{task.creator.last_name?.[0] || ""}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        </TouchableOpacity>
+                      </GestureDetector>
+                    );
+                  })}
+                  
+                  <TouchableOpacity
+                    style={[styles.listRow, { borderBottomWidth: 0, marginTop: Spacing.xs }]}
+                    onPress={() => {
+                      setSelectedColumnId(col.id);
+                      setIsDrawerVisible(true);
+                    }}
+                  >
+                    <View style={styles.listRowLeft}>
+                      <Ionicons name="add" size={18} color={AppColors.textMuted} />
+                      <Text style={styles.addTaskTextList}>Add Task</Text>
                     </View>
-                 </TouchableOpacity>
-               ))}
-               
-               <TouchableOpacity 
-                 style={[styles.listRow, { borderBottomWidth: 0, marginTop: Spacing.xs }]}
-                 onPress={() => {
-                   setSelectedColumnId(col.id);
-                   setIsDrawerVisible(true);
-                 }}
-               >
-                  <View style={styles.listRowLeft}>
-                    <Ionicons name="add" size={18} color={AppColors.textMuted} />
-                    <Text style={styles.addTaskTextList}>Add Task</Text>
-                  </View>
-               </TouchableOpacity>
-
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           );
         })}
-      </ScrollView>
+      </Animated.ScrollView>
     );
   };
 
+  const dragCardStyle = useAnimatedStyle(() => {
+    return {
+      position: 'absolute',
+      width: SCREEN_WIDTH * 0.75,
+      left: 0,
+      top: 0,
+      opacity: isDragging.value ? 0.8 : 0,
+      transform: [
+        { translateX: dragX.value - (SCREEN_WIDTH * 0.375) },
+        { translateY: dragY.value - 40 },
+        { scale: isDragging.value ? 1.05 : 1 }
+      ],
+      zIndex: 1000,
+    };
+  });
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={AppColors.background} />
-      {renderHeader()}
-      <View style={styles.contentArea}>
-        {isLoading ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-             <ActivityIndicator size="large" color={AppColors.accent} />
-          </View>
-        ) : (
-          type === 'kanban' ? renderKanban() : renderList()
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="light" />
+        {renderHeader()}
+        <View style={styles.contentArea}>
+          {isLoading ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+               <ActivityIndicator size="large" color={AppColors.accent} />
+            </View>
+          ) : (
+            viewType === 'kanban' ? renderKanban() : renderList()
+          )}
+        </View>
+
+        <TouchableOpacity 
+          style={styles.fab} 
+          activeOpacity={0.8} 
+          onPress={() => {
+            setSelectedColumnId(undefined);
+            setIsDrawerVisible(true);
+          }}
+        >
+          <Ionicons name="add" size={28} color={AppColors.white} />
+        </TouchableOpacity>
+
+        <AddTaskDrawer 
+          visible={isDrawerVisible} 
+          onClose={() => setIsDrawerVisible(false)} 
+          defaultBoardId={id}
+          defaultColumnId={selectedColumnId}
+          onTaskCreated={() => loadBoardData()}
+        />
+
+        <TaskDetailsDrawer
+          visible={isDetailsVisible}
+          taskId={selectedTaskId}
+          onClose={() => setIsDetailsVisible(false)}
+          onTaskUpdated={() => loadBoardData()}
+        />
+
+        {draggingTask && (
+          <Animated.View style={[styles.taskCardItem, dragCardStyle, { backgroundColor: AppColors.cardBackground, shadowColor: "#000", shadowOpacity: 0.5, shadowRadius: 10, elevation: 20 }]}>
+             <View style={[styles.taskCheckbox, { backgroundColor: AppColors.accent }]} />
+             <Text style={styles.taskCardText} numberOfLines={2}>{draggingTask.title}</Text>
+          </Animated.View>
         )}
-      </View>      {/* Floating Action Button */}
-      <TouchableOpacity 
-        style={styles.fab} 
-        activeOpacity={0.8} 
-        onPress={() => {
-          setSelectedColumnId(undefined);
-          setIsDrawerVisible(true);
-        }}
-      >
-        <Ionicons name="add" size={28} color={AppColors.white} />
-      </TouchableOpacity>
-
-      <AddTaskDrawer 
-        visible={isDrawerVisible} 
-        onClose={() => setIsDrawerVisible(false)} 
-        defaultBoardId={id}
-        defaultColumnId={selectedColumnId}
-        onTaskCreated={() => loadBoardData()}
-      />
-
-      <TaskDetailsDrawer
-        visible={isDetailsVisible}
-        taskId={selectedTaskId}
-        onClose={() => setIsDetailsVisible(false)}
-        onTaskUpdated={() => loadBoardData()}
-      />
-    </SafeAreaView>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
@@ -327,6 +590,21 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+  },
+  viewToggleBtn: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  viewToggleBtnActive: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  headerRightDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginHorizontal: 4,
   },
   contentArea: {
     flex: 1,

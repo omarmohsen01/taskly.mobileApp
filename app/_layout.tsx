@@ -57,12 +57,18 @@ function AuthGuard() {
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading) return; // still hydrating — wait
+    if (isLoading) return;
 
-    // Hide splash screen since hydration is done
-    SplashScreen.hideAsync();
+    // Use a try-catch and only attempt to hide if it hasn't been handled
+    const hideSplash = async () => {
+      try {
+        await SplashScreen.hideAsync();
+      } catch (e) {
+        // Safe to ignore if already hidden
+      }
+    };
+    hideSplash();
 
-    // segments for group routes like (auth) usually contain the group name
     const inAuthGroup = segments.includes('(auth)');
 
     if (!token && !inAuthGroup) {

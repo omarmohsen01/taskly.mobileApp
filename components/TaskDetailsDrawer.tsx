@@ -37,7 +37,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import AddTaskDrawer from './AddTaskDrawer';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SNAP_TOP = SCREEN_HEIGHT * 0.1; // Opens to 90% height
+const SNAP_TOP = SCREEN_HEIGHT * 0.05; // Opens to 95% height
 
 interface TaskDetailsDrawerProps {
   visible: boolean;

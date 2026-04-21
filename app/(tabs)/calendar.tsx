@@ -5,9 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { fetchCalendarTasks } from '@/lib/api';
@@ -105,7 +105,7 @@ export default function CalendarScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={AppColors.background} />
+      <StatusBar style="light" />
       
       <View style={styles.fixedHeader}>
         {/* Header */}
