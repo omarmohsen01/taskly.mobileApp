@@ -36,12 +36,19 @@ interface Message {
 
 interface AIChatAssistantProps {
   visible: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   mode: 'modal' | 'fullscreen';
   initialSessionId?: number | null;
+  isTabScreen?: boolean;
 }
 
-export default function AIChatAssistant({ visible, onClose, mode, initialSessionId }: AIChatAssistantProps) {
+export default function AIChatAssistant({ 
+  visible, 
+  onClose, 
+  mode, 
+  initialSessionId,
+  isTabScreen = false 
+}: AIChatAssistantProps) {
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const flatListRef = useRef<FlatList>(null);
@@ -53,6 +60,11 @@ export default function AIChatAssistant({ visible, onClose, mode, initialSession
   const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
+    if (isTabScreen) {
+      translateY.value = 0;
+      return;
+    }
+
     if (visible) {
       if (mode === 'fullscreen') {
         translateY.value = withTiming(0, { duration: 300 });
@@ -64,7 +76,7 @@ export default function AIChatAssistant({ visible, onClose, mode, initialSession
       translateY.value = withTiming(SCREEN_HEIGHT, { duration: 300 });
       setShowChat(false);
     }
-  }, [visible, mode]);
+  }, [visible, mode, isTabScreen]);
 
   const handleSend = async () => {
     if (!inputText.trim() || isLoading) return;
@@ -128,239 +140,267 @@ export default function AIChatAssistant({ visible, onClose, mode, initialSession
     );
   };
 
-  return (
-    <Modal visible={visible} transparent onRequestClose={onClose} animationType="none">
-      <View style={styles.container}>
-        <Animated.View style={[styles.sheet, animatedStyle, { paddingBottom: insets.bottom }]}>
-          {!showChat ? (
-            // Landing Screen
-            <>
-              {/* Header */}
-              <LinearGradient
-                colors={[AppColors.cardBackground, AppColors.background]}
-                style={styles.landingHeader}
+  const content = (
+    <Animated.View style={[
+      styles.sheet, 
+      isTabScreen && styles.sheetStatic,
+      animatedStyle, 
+      { paddingBottom: isTabScreen ? insets.bottom + 80 : insets.bottom }
+    ]}>
+      {!showChat ? (
+        // Landing Screen
+        <>
+          {/* Header */}
+          <LinearGradient
+            colors={[AppColors.cardBackground, AppColors.background]}
+            style={[styles.landingHeader, { paddingTop: Math.max(insets.top, 20) }]}
+          >
+            <View style={styles.landingHeaderContent}>
+              <View style={styles.userAvatarSection}>
+                <View style={styles.userAvatar}>
+                  <Text style={styles.avatarInitial}>J</Text>
+                </View>
+              </View>
+              <View style={styles.headerTitleRow}>
+                <Text style={styles.aiTitle}>AI Assistant</Text>
+              </View>
+              {!isTabScreen && onClose && (
+                <TouchableOpacity 
+                  style={styles.closeBtn}
+                  onPress={onClose}
+                  activeOpacity={0.6}
+                >
+                  <Ionicons name="close" size={24} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </LinearGradient>
+
+          {/* Content */}
+          <ScrollView 
+            style={styles.landingContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Greeting */}
+            <View style={styles.greetingSection}>
+              <Text style={styles.greetingText}>How Can I Assist</Text>
+              <Text style={styles.greetingText}>You Today?</Text>
+            </View>
+
+            {/* Quick Actions */}
+            <View style={styles.quickActionsGrid}>
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => {
+                  setInputText("Create a task");
+                  setShowChat(true);
+                }}
               >
-                <View style={styles.landingHeaderContent}>
-                  <View style={styles.userAvatarSection}>
-                    <View style={styles.userAvatar}>
-                      <Text style={styles.avatarInitial}>J</Text>
-                    </View>
-                  </View>
-                  <View style={styles.headerTitleRow}>
-                    <Text style={styles.aiTitle}>AI Assistant</Text>
-                  </View>
-                  <TouchableOpacity 
-                    style={styles.closeBtn}
-                    onPress={onClose}>
-                    <Ionicons name="close" size={24} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              </LinearGradient>
+                <Ionicons name="add-circle-outline" size={24} color={AppColors.accent} />
+                <Text style={styles.actionText}>Create a task</Text>
+              </TouchableOpacity>
 
-              {/* Content */}
-              <ScrollView 
-                style={styles.landingContent}
-                showsVerticalScrollIndicator={false}
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => {
+                  setInputText("Help me organize tasks");
+                  setShowChat(true);
+                }}
               >
-                {/* Greeting */}
-                <View style={styles.greetingSection}>
-                  <Text style={styles.greetingText}>How Can I Assist</Text>
-                  <Text style={styles.greetingText}>You Today?</Text>
-                </View>
+                <Ionicons name="layers-outline" size={24} color={AppColors.accent} />
+                <Text style={styles.actionText}>Organize tasks</Text>
+              </TouchableOpacity>
 
-                {/* Quick Actions */}
-                <View style={styles.quickActionsGrid}>
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => {
-                      setInputText("Create a task");
-                      setShowChat(true);
-                    }}
-                  >
-                    <Ionicons name="add-circle-outline" size={24} color={AppColors.accent} />
-                    <Text style={styles.actionText}>Create a task</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => {
-                      setInputText("Help me organize tasks");
-                      setShowChat(true);
-                    }}
-                  >
-                    <Ionicons name="layers-outline" size={24} color={AppColors.accent} />
-                    <Text style={styles.actionText}>Organize tasks</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => {
-                      setInputText("Set reminders for me");
-                      setShowChat(true);
-                    }}
-                  >
-                    <Ionicons name="notifications-outline" size={24} color={AppColors.accent} />
-                    <Text style={styles.actionText}>Set reminders</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => {
-                      setInputText("Show today's priorities");
-                      setShowChat(true);
-                    }}
-                  >
-                    <Ionicons name="star-outline" size={24} color={AppColors.accent} />
-                    <Text style={styles.actionText}>Today's priorities</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* AI Response Types */}
-                <View style={styles.aiResponseSection}>
-                  <Text style={styles.responseTypesTitle}>AI Response Types</Text>
-                  
-                  <View style={styles.responseCardsContainer}>
-                    <TouchableOpacity 
-                      style={styles.responseCard}
-                      onPress={() => setShowChat(true)}
-                    >
-                      <Ionicons name="sparkles" size={20} color={AppColors.accent} />
-                      <Text style={styles.responseCardTitle}>Task Suggestions</Text>
-                      <Text style={styles.responseCardDesc}>
-                        I suggest completing Design Review first.
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity 
-                      style={styles.responseCard}
-                      onPress={() => setShowChat(true)}
-                    >
-                      <Ionicons name="bulb" size={20} color={AppColors.accent} />
-                      <Text style={styles.responseCardTitle}>Smart</Text>
-                      <Text style={styles.responseCardDesc}>
-                        You completed 1 task this morning.
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </ScrollView>
-
-              {/* Input Area for Landing */}
-              <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => {
+                  setInputText("Set reminders for me");
+                  setShowChat(true);
+                }}
               >
-                <View style={styles.landingInputWrapper}>
-                  <TextInput
-                    style={styles.landingInput}
-                    placeholder="Type a message..."
-                    placeholderTextColor={AppColors.textMuted}
-                    value={inputText}
-                    onChangeText={setInputText}
-                  />
-                  <TouchableOpacity 
-                    onPress={() => {
-                      if (inputText.trim()) {
-                        setShowChat(true);
-                      }
-                    }}
-                    style={styles.landingSendBtn}
-                  >
-                    <LinearGradient
-                      colors={[AppColors.accent, AppColors.floatingButtonEnd]}
-                      style={styles.landingSendGradient}
-                    >
-                      <Ionicons name="arrow-forward" size={20} color="#fff" />
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              </KeyboardAvoidingView>
-            </>
-          ) : (
-            // Chat Screen
-            <>
-              {/* Header */}
-              <LinearGradient
-                colors={[AppColors.cardBackground, AppColors.background]}
-                style={styles.header}
+                <Ionicons name="notifications-outline" size={24} color={AppColors.accent} />
+                <Text style={styles.actionText}>Set reminders</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => {
+                  setInputText("Show today's priorities");
+                  setShowChat(true);
+                }}
               >
-                <View style={styles.headerBar} />
-                <View style={styles.headerContent}>
-                  <View style={styles.headerInfo}>
-                    <Text style={styles.headerTitle}>Taskly AI</Text>
-                    <View style={styles.onlineBadge}>
-                      <View style={styles.onlineDot} />
-                      <Text style={styles.onlineText}>Online</Text>
-                    </View>
-                  </View>
+                <Ionicons name="star-outline" size={24} color={AppColors.accent} />
+                <Text style={styles.actionText}>Today's priorities</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* AI Response Types */}
+            <View style={styles.aiResponseSection}>
+              <Text style={styles.responseTypesTitle}>AI Response Types</Text>
+              
+              <View style={styles.responseCardsContainer}>
+                <TouchableOpacity 
+                  style={styles.responseCard}
+                  onPress={() => setShowChat(true)}
+                >
+                  <Ionicons name="sparkles" size={20} color={AppColors.accent} />
+                  <Text style={styles.responseCardTitle}>Task Suggestions</Text>
+                  <Text style={styles.responseCardDesc}>
+                    I suggest completing Design Review first.
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.responseCard}
+                  onPress={() => setShowChat(true)}
+                >
+                  <Ionicons name="bulb" size={20} color={AppColors.accent} />
+                  <Text style={styles.responseCardTitle}>Smart</Text>
+                  <Text style={styles.responseCardDesc}>
+                    You completed 1 task this morning.
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+
+          {/* Input Area for Landing */}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+          >
+            <View style={styles.landingInputWrapper}>
+              <TextInput
+                style={styles.landingInput}
+                placeholder="Type a message..."
+                placeholderTextColor={AppColors.textMuted}
+                value={inputText}
+                onChangeText={setInputText}
+              />
+              <TouchableOpacity 
+                onPress={() => {
+                  if (inputText.trim()) {
+                    setShowChat(true);
+                  }
+                }}
+                style={styles.landingSendBtn}
+              >
+                <LinearGradient
+                  colors={[AppColors.accent, AppColors.floatingButtonEnd]}
+                  style={styles.landingSendGradient}
+                >
+                  <Ionicons name="arrow-forward" size={20} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </>
+      ) : (
+        // Chat Screen
+        <>
+          {/* Header */}
+          <LinearGradient
+            colors={[AppColors.cardBackground, AppColors.background]}
+            style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}
+          >
+            <View style={styles.headerBar} />
+            <View style={styles.headerContent}>
+              <View style={styles.headerInfo}>
+                <Text style={styles.headerTitle}>Taskly AI</Text>
+                <View style={styles.onlineBadge}>
+                  <View style={styles.onlineDot} />
+                  <Text style={styles.onlineText}>Online</Text>
+                </View>
+              </View>
+              {isTabScreen ? (
+                <TouchableOpacity 
+                  onPress={() => setShowChat(false)} 
+                  style={styles.closeBtn}
+                  activeOpacity={0.6}
+                >
+                  <Ionicons name="arrow-back" size={24} color="#fff" />
+                </TouchableOpacity>
+              ) : (
+                onClose && (
                   <TouchableOpacity 
                     onPress={onClose} 
                     style={styles.closeBtn}
+                    activeOpacity={0.6}
                   >
                     <Ionicons name="chevron-down" size={24} color="#fff" />
                   </TouchableOpacity>
-                </View>
-              </LinearGradient>
-
-              {/* Chat List */}
-              <FlatList
-                ref={flatListRef}
-                data={messages}
-                keyExtractor={item => String(item.id)}
-                renderItem={renderMessage}
-                contentContainerStyle={styles.listContent}
-                onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
-                ListEmptyComponent={
-                  <View style={styles.emptyContainer}>
-                    <View style={styles.emptyIconCircle}>
-                       <Ionicons name="chatbubble-ellipses-outline" size={40} color={AppColors.accent} />
-                    </View>
-                    <Text style={styles.welcomeTitle}>Brainstorm with AI</Text>
-                    <Text style={styles.welcomeSub}>I can help you create tasks, manage your schedule, and explore new ideas.</Text>
-                  </View>
-                }
-              />
-
-              {/* Typing Indicator */}
-              {isLoading && (
-                <View style={styles.typingIndicator}>
-                  <ActivityIndicator size="small" color={AppColors.accent} />
-                  <Text style={styles.typingText}>Thinking...</Text>
-                </View>
+                )
               )}
+            </View>
+          </LinearGradient>
 
-              {/* Input Area for Chat */}
-              <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
-              >
-                <View style={styles.inputWrapper}>
-                   <TextInput
-                     style={styles.input}
-                     placeholder="Message Taskly AI..."
-                     placeholderTextColor={AppColors.textMuted}
-                     value={inputText}
-                     onChangeText={setInputText}
-                     multiline
-                   />
-                   <TouchableOpacity 
-                     onPress={handleSend} 
-                     style={[styles.sendBtn, !inputText.trim() && { opacity: 0.5 }]}
-                     disabled={!inputText.trim() || isLoading}
-                   >
-                     <LinearGradient
-                       colors={[AppColors.floatingButtonStart, AppColors.floatingButtonEnd]}
-                       style={styles.sendGradient}
-                     >
-                       <Ionicons name="arrow-up" size={22} color="#fff" />
-                     </LinearGradient>
-                   </TouchableOpacity>
+          {/* Chat List */}
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={item => String(item.id)}
+            renderItem={renderMessage}
+            contentContainerStyle={styles.listContent}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconCircle}>
+                   <Ionicons name="chatbubble-ellipses-outline" size={40} color={AppColors.accent} />
                 </View>
-              </KeyboardAvoidingView>
-            </>
+                <Text style={styles.welcomeTitle}>Brainstorm with AI</Text>
+                <Text style={styles.welcomeSub}>I can help you create tasks, manage your schedule, and explore new ideas.</Text>
+              </View>
+            }
+          />
+
+          {/* Typing Indicator */}
+          {isLoading && (
+            <View style={styles.typingIndicator}>
+              <ActivityIndicator size="small" color={AppColors.accent} />
+              <Text style={styles.typingText}>Thinking...</Text>
+            </View>
           )}
-        </Animated.View>
-      </View>
+
+          {/* Input Area for Chat */}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+          >
+            <View style={styles.inputWrapper}>
+               <TextInput
+                 style={styles.input}
+                 placeholder="Message Taskly AI..."
+                 placeholderTextColor={AppColors.textMuted}
+                 value={inputText}
+                 onChangeText={setInputText}
+                 multiline
+               />
+               <TouchableOpacity 
+                 onPress={handleSend} 
+                 style={[styles.sendBtn, !inputText.trim() && { opacity: 0.5 }]}
+                 disabled={!inputText.trim() || isLoading}
+               >
+                 <LinearGradient
+                   colors={[AppColors.floatingButtonStart, AppColors.floatingButtonEnd]}
+                   style={styles.sendGradient}
+                 >
+                   <Ionicons name="arrow-up" size={22} color="#fff" />
+                 </LinearGradient>
+               </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </>
+      )}
+    </Animated.View>
+  );
+
+  if (isTabScreen) {
+    return <View style={styles.container}>{content}</View>;
+  }
+
+  return (
+    <Modal visible={visible} transparent onRequestClose={onClose} animationType="none">
+      <View style={styles.container}>{content}</View>
     </Modal>
   );
 }
@@ -380,14 +420,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333'
   },
+  sheetStatic: {
+    position: 'relative',
+    height: '100%',
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderWidth: 0,
+  },
   
   // Landing Screen Styles
   landingHeader: { 
-    padding: 20, 
+    paddingHorizontal: 20, 
     paddingBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    zIndex: 100,
   },
   landingHeaderContent: {
     width: '100%',
@@ -530,7 +578,7 @@ const styles = StyleSheet.create({
   },
 
   // Chat Screen Styles
-  header: { padding: 15, paddingBottom: 20 },
+  header: { padding: 15, paddingBottom: 20, zIndex: 100 },
   headerBar: { width: 40, height: 4, backgroundColor: '#333', borderRadius: 2, alignSelf: 'center', marginBottom: 15 },
   headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },

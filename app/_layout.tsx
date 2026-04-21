@@ -13,6 +13,7 @@ import { hydrateToken } from '@/lib/api';
 import AIChatAssistant from '@/components/AIChatAssistant';
 import AIChatFAB from '@/components/AIChatFAB';
 import { useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -55,19 +56,8 @@ function AuthGuard() {
   const { token, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-
   useEffect(() => {
     if (isLoading) return;
-
-    // Use a try-catch and only attempt to hide if it hasn't been handled
-    const hideSplash = async () => {
-      try {
-        await SplashScreen.hideAsync();
-      } catch (e) {
-        // Safe to ignore if already hidden
-      }
-    };
-    hideSplash();
 
     const inAuthGroup = segments.includes('(auth)');
 
@@ -85,13 +75,16 @@ function AuthGuard() {
 
 function GlobalAIWrapper() {
   const { token } = useAuth();
+  const segments = useSegments();
   const [isAIChatVisible, setIsAIChatVisible] = useState(false);
 
   if (!token) return null;
 
+  const isAIAssistantScreen = segments.includes('ai-assistant');
+
   return (
     <>
-      <AIChatFAB onPress={() => setIsAIChatVisible(true)} />
+      {!isAIAssistantScreen && <AIChatFAB onPress={() => setIsAIChatVisible(true)} />}
       <AIChatAssistant 
         visible={isAIChatVisible} 
         onClose={() => setIsAIChatVisible(false)} 
@@ -102,82 +95,92 @@ function GlobalAIWrapper() {
 }
 
 export default function RootLayout() {
-  useEffect(() => {
-    hydrateToken();
-  }, []);
+    useEffect(() => {
+      hydrateToken();
+      // Hide splash screen once after app is hydrated
+      setTimeout(async () => {
+        try {
+          await SplashScreen.hideAsync();
+        } catch (e) {
+          // already hidden
+        }
+      }, 1000);
+    }, []);
 
   return (
-    <AuthProvider>
-      <ThemeProvider value={CustomDarkTheme}>
-        <AuthGuard />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: AppColors.background },
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen
-            name="add-task"
-            options={{
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen
-            name="task-details"
-            options={{
+    <SafeAreaProvider>
+      <AuthProvider>
+        <ThemeProvider value={CustomDarkTheme}>
+          <AuthGuard />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: AppColors.background },
               animation: 'slide_from_right',
             }}
-          />
-          <Stack.Screen
-            name="packages"
-            options={{
-              animation: 'slide_from_right',
-            }}
-          />
-          <Stack.Screen
-            name="subscription-success"
-            options={{
-              animation: 'fade',
-            }}
-          />
-          <Stack.Screen
-            name="create-workspace"
-            options={{
-              animation: 'slide_from_right',
-            }}
-          />
-          <Stack.Screen
-            name="create-space"
-            options={{
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen
-            name="create-board"
-            options={{
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen
-            name="create-folder"
-            options={{
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-        </Stack>
-        <StatusBar style="light" />
-        <Toast config={toastConfig} />
-        <GlobalAIWrapper />
-      </ThemeProvider>
-    </AuthProvider>
+          >
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen
+              name="add-task"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="task-details"
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="packages"
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="subscription-success"
+              options={{
+                animation: 'fade',
+              }}
+            />
+            <Stack.Screen
+              name="create-workspace"
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="create-space"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="create-board"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="create-folder"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          </Stack>
+          <StatusBar style="light" />
+          <Toast config={toastConfig} />
+          <GlobalAIWrapper />
+        </ThemeProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

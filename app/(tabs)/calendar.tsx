@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -235,12 +236,34 @@ export default function CalendarScreen() {
       </ScrollView>
 
       {showPicker && (
-        <DateTimePicker
-          value={parseLocalDateString(selectedDate)}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={onDateChange}
-        />
+        Platform.OS === 'ios' ? (
+          <Modal transparent animationType="slide" visible={showPicker}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Select Date</Text>
+                  <TouchableOpacity onPress={() => setShowPicker(false)}>
+                    <Text style={styles.modalDoneText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={parseLocalDateString(selectedDate)}
+                  mode="date"
+                  display="spinner"
+                  onChange={onDateChange}
+                  textColor="#fff"
+                />
+              </View>
+            </View>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={parseLocalDateString(selectedDate)}
+            mode="date"
+            display="default"
+            onChange={onDateChange}
+          />
+        )
       )}
 
       {/* Details Drawer */}
@@ -447,5 +470,34 @@ const styles = StyleSheet.create({
   pillDesc: {
     color: 'rgba(39,41,42,0.7)',
     fontSize: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: AppColors.cardBackground,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderBottomWidth: 1,
+    borderColor: AppColors.border,
+  },
+  modalTitle: {
+    color: AppColors.white,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalDoneText: {
+    color: AppColors.accent,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

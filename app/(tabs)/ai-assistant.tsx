@@ -10,8 +10,8 @@ export default function AIAssistantScreen() {
     <View style={styles.container}>
       <AIChatAssistant 
         visible={true} 
-        onClose={() => router.back()} 
         mode="fullscreen" 
+        isTabScreen={true}
       />
     </View>
   );
