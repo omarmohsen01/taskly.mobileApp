@@ -28,9 +28,6 @@ export default function CreateSpaceScreen() {
   const [spaceName, setSpaceName] = useState('');
   const [description, setDescription] = useState('');
   const [privacy, setPrivacy] = useState<'workspace' | 'private'>('workspace');
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const [selectedStatusTemplate, setSelectedStatusTemplate] = useState('Space Statuses');
 
   // Members state
@@ -67,14 +64,6 @@ export default function CreateSpaceScreen() {
     }
   };
 
-  const toggleUser = (userId: number) => {
-    setSelectedUserIds(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId) 
-        : [...prev, userId]
-    );
-  };
-
   const handleCreate = async () => {
     if (!spaceName.trim() || !workspaceId) return;
     
@@ -84,7 +73,6 @@ export default function CreateSpaceScreen() {
         workspace_id: workspaceId,
         name: spaceName,
         description: description,
-        users: selectedUserIds
       });
       Toast.show({
         type: 'success',
@@ -172,186 +160,8 @@ export default function CreateSpaceScreen() {
             <Text style={[styles.privacyText, privacy === 'private' && styles.privacyTextActive]}>Private</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Members */}
-        <Text style={styles.sectionLabel}>Add Members</Text>
-        {isLoadingMembers ? (
-          <ActivityIndicator color={AppColors.accent} style={{ marginVertical: 10 }} />
-        ) : members.length === 0 ? (
-          <Text style={{ color: AppColors.textMuted, fontSize: 13, marginLeft: 5 }}>No other members in this workspace</Text>
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.membersRow}>
-            {members.map((member) => {
-              const isSelected = selectedUserIds.includes(member.id);
-              return (
-                <TouchableOpacity
-                  key={member.id}
-                  style={[styles.memberCard, isSelected && styles.memberCardSelected]}
-                  activeOpacity={0.7}
-                  onPress={() => toggleUser(member.id)}
-                >
-                  <View style={styles.memberAvatarWrap}>
-                    <Text style={styles.memberAvatarText}>
-                      {(member.first_name?.[0] || member.name?.[0] || '?').toUpperCase()}
-                    </Text>
-                    {isSelected && (
-                      <View style={styles.memberCheckBadge}>
-                        <Ionicons name="checkmark" size={10} color={AppColors.white} />
-                      </View>
-                    )}
-                  </View>
-                  <Text style={[styles.memberName, isSelected && styles.memberNameSelected]} numberOfLines={1}>
-                    {member.first_name || member.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        )}
-
-        {/* Space settings */}
-        <Text style={styles.sectionLabel}>Space settings</Text>
-        <View style={styles.settingsCard}>
-          {/* Statuses */}
-          <TouchableOpacity
-            style={styles.settingRow}
-            activeOpacity={0.7}
-            onPress={() => setShowStatusModal(true)}
-          >
-            <View style={styles.settingIconWrap}>
-              <Ionicons name="copy-outline" size={18} color={AppColors.textMuted} />
-            </View>
-            <Text style={styles.settingLabel}>Statuses</Text>
-            <View style={styles.settingValueRow}>
-              <View style={[styles.statusDot, { backgroundColor: AppColors.textMuted }]} />
-              <View style={[styles.statusDot, { backgroundColor: AppColors.success }]} />
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.settingDivider} />
-
-          {/* Color */}
-          <TouchableOpacity
-            style={styles.settingRow}
-            activeOpacity={0.7}
-            onPress={() => setShowColorPicker(true)}
-          >
-            <View style={styles.settingIconWrap}>
-              <Ionicons name="brush-outline" size={18} color={AppColors.textMuted} />
-            </View>
-            <Text style={styles.settingLabel}>Color</Text>
-            {selectedColor ? (
-              <View style={[styles.colorPreview, { backgroundColor: selectedColor }]} />
-            ) : (
-              <Ionicons name="add" size={18} color={AppColors.textMuted} />
-            )}
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
-      {/* Status Modal */}
-      <Modal visible={showStatusModal} transparent animationType="slide" onRequestClose={() => setShowStatusModal(false)}>
-        <TouchableWithoutFeedback onPress={() => setShowStatusModal(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback onPress={e => e.stopPropagation()}>
-              <View style={styles.modalSheet}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Statuses</Text>
-                  <TouchableOpacity onPress={() => setShowStatusModal(false)}>
-                    <Text style={styles.modalDone}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Search */}
-                <View style={styles.modalSearch}>
-                  <Ionicons name="search" size={18} color={AppColors.textMuted} />
-                  <TextInput
-                    style={styles.modalSearchInput}
-                    placeholder="Search"
-                    placeholderTextColor={AppColors.textMuted}
-                  />
-                </View>
-
-                <View style={styles.modalDivider} />
-
-                <ScrollView>
-                  {/* Default Statuses */}
-                  <Text style={styles.statusSectionLabel}>Default Statuses</Text>
-                  <View style={styles.statusDivider} />
-
-                  <TouchableOpacity style={styles.statusRow}>
-                    <Ionicons name="checkmark-circle" size={22} color={AppColors.accent} />
-                    <Text style={styles.statusRowText}>
-                      Space Statuses <Text style={styles.statusRowSub}>(space 1)</Text>
-                    </Text>
-                    <Ionicons name="ellipsis-horizontal" size={18} color={AppColors.textMuted} />
-                  </TouchableOpacity>
-                  <View style={styles.statusDivider} />
-
-                  <TouchableOpacity style={styles.statusRow}>
-                    <Text style={styles.statusRowText}>Custom Statuses</Text>
-                    <Ionicons name="ellipsis-horizontal" size={18} color={AppColors.textMuted} />
-                  </TouchableOpacity>
-                  <View style={styles.statusDivider} />
-
-                  {/* Templates */}
-                  <View style={styles.templateHeader}>
-                    <Text style={styles.statusSectionLabel}>Templates ({statusTemplates.length})</Text>
-                    <TouchableOpacity>
-                      <Ionicons name="add" size={20} color={AppColors.textMuted} />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.statusDivider} />
-
-                  {statusTemplates.map(t => (
-                    <View key={t.id}>
-                      <TouchableOpacity style={styles.statusRow}>
-                        <Text style={styles.statusRowText}>{t.name}</Text>
-                        <Ionicons name="ellipsis-horizontal" size={18} color={AppColors.textMuted} />
-                      </TouchableOpacity>
-                      <View style={styles.statusDivider} />
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      {/* Color Picker Modal */}
-      <Modal visible={showColorPicker} transparent animationType="slide" onRequestClose={() => setShowColorPicker(false)}>
-        <TouchableWithoutFeedback onPress={() => setShowColorPicker(false)}>
-          <View style={styles.colorModalOverlay}>
-            <TouchableWithoutFeedback onPress={e => e.stopPropagation()}>
-              <View style={styles.colorModalSheet}>
-                <View style={styles.colorModalHeader}>
-                  <Text style={styles.colorModalTitle}>Pick a color</Text>
-                  <TouchableOpacity onPress={() => setShowColorPicker(false)}>
-                    <Text style={styles.modalDone}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.colorGrid}>
-                  {spaceColors.map((color, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={[
-                        styles.colorCircle,
-                        color ? { backgroundColor: color } : styles.colorCircleNone,
-                        selectedColor === color && styles.colorCircleSelected,
-                      ]}
-                      activeOpacity={0.7}
-                      onPress={() => { setSelectedColor(color); setShowColorPicker(false); }}
-                    >
-                      {!color && <Ionicons name="ban-outline" size={22} color={AppColors.textMuted} />}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
     </View>
   );
 }
