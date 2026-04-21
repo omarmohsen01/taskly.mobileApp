@@ -77,6 +77,23 @@ export default function TaskDetailsDrawer({ visible, taskId, onClose, onTaskUpda
   const [projectLabels, setProjectLabels] = useState<any[]>([]);
   const [isAssigneePickerVisible, setIsAssigneePickerVisible] = useState(false);
   const [isLabelPickerVisible, setIsLabelPickerVisible] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const [labelSearch, setLabelSearch] = useState('');
+
+  const filteredUsers = useMemo(() => {
+    if (!userSearch) return projectUsers;
+    return projectUsers.filter(u => 
+      u.full_name?.toLowerCase().includes(userSearch.toLowerCase()) || 
+      u.email?.toLowerCase().includes(userSearch.toLowerCase())
+    );
+  }, [projectUsers, userSearch]);
+
+  const filteredLabels = useMemo(() => {
+    if (!labelSearch) return projectLabels;
+    return projectLabels.filter(l => 
+      l.name?.toLowerCase().includes(labelSearch.toLowerCase())
+    );
+  }, [projectLabels, labelSearch]);
 
   useEffect(() => {
     if (visible && taskId) {
@@ -224,17 +241,37 @@ export default function TaskDetailsDrawer({ visible, taskId, onClose, onTaskUpda
           <View style={styles.metaIcon}><Ionicons name="person-outline" size={20} color="#888" /></View>
           <View style={styles.metaValueRow}>
             <Text style={styles.metaValueText}>Assignees</Text>
-            <View style={styles.miniAvatar}><Text style={styles.miniAvatarText}>
-               {task?.assigned_users?.length > 0 ? task.assigned_users[0].first_name[0] : 'U'}
-            </Text></View>
+            <View style={styles.avatarList}>
+               {task?.assigned_users?.length > 0 ? (
+                 task.assigned_users.slice(0, 3).map((u: any, idx: number) => (
+                    <View key={u.id} style={[styles.miniAvatar, { marginLeft: idx > 0 ? -10 : 0, zIndex: 10 - idx }]}>
+                      <Text style={styles.miniAvatarText}>{(u.first_name || 'U')[0]}</Text>
+                    </View>
+                 ))
+               ) : (
+                 <View style={styles.miniAvatar}><Text style={styles.miniAvatarText}>+</Text></View>
+               )}
+               {task?.assigned_users?.length > 3 && (
+                 <View style={[styles.miniAvatar, { marginLeft: -10, zIndex: 0, backgroundColor: '#333' }]}>
+                   <Text style={[styles.miniAvatarText, { color: '#fff' }]}>+{task.assigned_users.length - 3}</Text>
+                 </View>
+               )}
+            </View>
           </View>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.metaRow} onPress={() => setIsLabelPickerVisible(true)}>
           <View style={styles.metaIcon}><Ionicons name="pricetag-outline" size={20} color="#888" /></View>
-          <Text style={styles.metaValueText}>
-             {task?.labels?.length > 0 ? task.labels.map((l: any) => l.name).join(', ') : 'Add Labels'}
-          </Text>
+          <View style={styles.metaValueRow}>
+             <Text style={styles.metaValueText}>Labels</Text>
+             <View style={styles.labelPillList}>
+                {task?.labels?.length > 0 ? task.labels.map((l: any) => (
+                  <View key={l.id} style={[styles.miniLabel, { backgroundColor: (l.color || AppColors.accent) + '22' }]}>
+                    <Text style={[styles.miniLabelText, { color: l.color || AppColors.accent }]}>{l.name}</Text>
+                  </View>
+                )) : <Text style={styles.metaValueTextMuted}>Add Labels</Text>}
+             </View>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -245,9 +282,12 @@ export default function TaskDetailsDrawer({ visible, taskId, onClose, onTaskUpda
           }}
         >
           <View style={styles.metaIcon}><Ionicons name="calendar-outline" size={20} color="#888" /></View>
-          <Text style={styles.metaValueText}>
-            {task?.due_date ? `Due: ${new Date(task.due_date).toLocaleDateString()}` : 'Add Dates'}
-          </Text>
+          <View>
+            <Text style={styles.metaLabel}>Due Date</Text>
+            <Text style={styles.metaValue}>
+              {task?.due_date ? new Date(task.due_date).toLocaleDateString() : 'Set Due Date'}
+            </Text>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.metaRow}>
@@ -306,47 +346,41 @@ export default function TaskDetailsDrawer({ visible, taskId, onClose, onTaskUpda
     </ScrollView>
   );
 
+  const formatRelativeTime = (dateStr: string) => {
+    if (!dateStr) return '';
+    const now = new Date();
+    const date = new Date(dateStr);
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
   const renderActivity = () => (
     <View style={{flex:1}}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContent}>
-         <TouchableOpacity style={styles.updateExpand}>
-            <Ionicons name="stats-chart-outline" size={18} color="#888" />
-            <Text style={styles.updateExpandText}>Show {task?.activities?.length || 2} updates</Text>
-            <Ionicons name="chevron-down" size={18} color="#888" />
-         </TouchableOpacity>
-
-         {/* Activity Log Example */}
-         <View style={styles.logCard}>
-            <View style={styles.logRow}>
-               <Ionicons name="person-outline" size={14} color="#888" />
-               <Text style={styles.logText}>You assigned task to you</Text>
-            </View>
-            <View style={[styles.logRow, {marginTop: 10}]}>
-               <Ionicons name="ellipse-outline" size={14} color="#888" />
-               <View>
-                  <Text style={styles.logText}>You changed status to</Text>
-                  <View style={styles.statusChangeRow}>
-                     <Ionicons name="radio-button-off" size={12} color={AppColors.textMuted} />
-                     <Text style={styles.statusTextOld}> TO DO</Text>
-                     <Ionicons name="arrow-forward" size={12} color={AppColors.textMuted} style={{marginHorizontal:5}} />
-                     <Text style={styles.statusTextNew}><Text style={{color: AppColors.accent}}>●</Text> IN PROGRESS</Text>
-                  </View>
-               </View>
-            </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.tabContent, { paddingBottom: 100 }]}>
+         {/* Real Activity Logs with Timeline Aesthetic */}
+         <View style={styles.timelineContainer}>
+            {task?.activities?.map((activity: any, i: number) => (
+              <View key={`activity-${activity.id || i}`} style={styles.timelineItem}>
+                 <View style={styles.timelineLine}>
+                    <View style={styles.timelineDot} />
+                    {i < (task?.activities?.length - 1 || 0) && <View style={styles.timelineConnector} />}
+                 </View>
+                 <View style={styles.timelineBody}>
+                    <Text style={styles.logText}>{activity.description}</Text>
+                    <Text style={styles.logTime}>{formatRelativeTime(activity.created_at)}</Text>
+                 </View>
+              </View>
+            ))}
          </View>
 
-         {/* Comment Example */}
-         <View style={styles.commentItem}>
-            <View style={styles.commentAvatar}><Text style={styles.commentAvatarText}>OM</Text></View>
-            <View style={styles.commentBody}>
-               <View style={styles.commentHeader}>
-                  <Text style={styles.commentAuthor}>Omar mohsen</Text>
-                  <Text style={styles.commentTime}>now</Text>
-               </View>
-               <Text style={styles.commentText}>It will fix</Text>
-            </View>
-         </View>
-
+         {/* Comments Section */}
+         {comments.length > 0 && <Text style={styles.activityHeading}>Comments</Text>}
          {comments.map((c: any, i: number) => {
             const userName = c.user?.full_name || 'User';
             const initial = c.user?.first_name?.[0] || 'U';
@@ -356,25 +390,31 @@ export default function TaskDetailsDrawer({ visible, taskId, onClose, onTaskUpda
                  <View style={styles.commentBody}>
                     <View style={styles.commentHeader}>
                        <Text style={styles.commentAuthor}>{userName}</Text>
-                       <Text style={styles.commentTime}>now</Text>
-                       <View style={{flex:1}} />
-                       <Image 
-                         source={{ uri: 'https://img.icons8.com/color/48/rainbow.png' }} 
-                         style={{ width: 14, height: 14, opacity: 0.8 }} 
-                       />
+                       <Text style={styles.commentTime}>{formatRelativeTime(c.created_at)}</Text>
                     </View>
-                    <Text style={styles.commentText}>{c.comments}</Text>
+                    <View style={styles.commentBubble}>
+                       <Text style={styles.commentText}>{c.comments}</Text>
+                    </View>
                  </View>
               </View>
             );
          })}
+
+         {(!task?.activities || task.activities.length === 0) && comments.length === 0 && (
+           <View style={{padding: 60, alignItems: 'center'}}>
+             <View style={styles.emptyActivityCircle}>
+                <Ionicons name="chatbubbles-outline" size={32} color="#444" />
+             </View>
+             <Text style={{color: '#555', marginTop: 15, fontSize: 14, fontWeight: '600'}}>No activity record</Text>
+           </View>
+         )}
       </ScrollView>
 
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        <View style={[styles.commentInputBar, { paddingBottom: Math.max(insets.bottom, 15) }]}>
+        <View style={[styles.commentInputBar, { paddingBottom: Math.max(insets.bottom, 40), marginBottom: 10 }]}>
            <TouchableOpacity style={styles.commentAttach}><Ionicons name="add" size={24} color="#888" /></TouchableOpacity>
            <TextInput 
              style={styles.commentInput} 
@@ -513,17 +553,34 @@ export default function TaskDetailsDrawer({ visible, taskId, onClose, onTaskUpda
 
         {/* Assignee Picker */}
         {isAssigneePickerVisible && (
-          <Modal transparent visible={isAssigneePickerVisible} animationType="fade">
-            <TouchableOpacity style={styles.statusPickerOverlay} activeOpacity={1} onPress={() => setIsAssigneePickerVisible(false)}>
-              <View style={styles.statusPickerContent}>
-                <Text style={[styles.sectionTitle, { marginBottom: 15 }]}>Assign Users</Text>
-                <ScrollView style={{maxHeight: 300}}>
-                  {projectUsers.map((u) => {
+          <Modal transparent visible={isAssigneePickerVisible} animationType="slide">
+            <View style={styles.pickerModalOverlay}>
+              <View style={styles.pickerModalContent}>
+                <View style={styles.pickerModalHeader}>
+                  <Text style={styles.pickerModalTitle}>Assign Users</Text>
+                  <TouchableOpacity onPress={() => { setIsAssigneePickerVisible(false); setUserSearch(''); }}>
+                    <Ionicons name="close" size={24} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.searchBox}>
+                  <Ionicons name="search" size={18} color="#555" />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search users..."
+                    placeholderTextColor="#555"
+                    value={userSearch}
+                    onChangeText={setUserSearch}
+                  />
+                </View>
+
+                <ScrollView style={{maxHeight: 400}}>
+                  {filteredUsers.map((u) => {
                     const isSelected = task?.assigned_users?.some((au: any) => au.id === u.id);
                     return (
                       <TouchableOpacity 
                         key={u.id} 
-                        style={styles.statusOption}
+                        style={styles.pickerItem}
                         onPress={() => {
                           let newIds = task?.assigned_users?.map((au: any) => au.id) || [];
                           if (isSelected) newIds = newIds.filter((id: number) => id !== u.id);
@@ -531,31 +588,63 @@ export default function TaskDetailsDrawer({ visible, taskId, onClose, onTaskUpda
                           handleUpdateField({ assigned_users: newIds });
                         }}
                       >
-                         <Text style={[styles.statusOptionText, isSelected && { color: AppColors.accent }]}>
-                           {u.full_name} {isSelected ? '✓' : ''}
-                         </Text>
+                         <View style={styles.pickerItemLeft}>
+                            <View style={styles.pickerAvatar}>
+                               <Text style={styles.pickerAvatarText}>{(u.full_name || 'U')[0]}</Text>
+                            </View>
+                            <View>
+                               <Text style={[styles.pickerItemText, isSelected && { color: AppColors.accent, fontWeight: '700' }]}>
+                                 {u.full_name}
+                               </Text>
+                               <Text style={styles.pickerItemSubtext}>{u.email}</Text>
+                            </View>
+                         </View>
+                         {isSelected && <Ionicons name="checkmark-circle" size={22} color={AppColors.accent} />}
                       </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
+                <TouchableOpacity 
+                  style={styles.confirmBtn} 
+                  onPress={() => { setIsAssigneePickerVisible(false); setUserSearch(''); }}
+                >
+                  <Text style={styles.confirmBtnText}>DONE</Text>
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
+            </View>
           </Modal>
         )}
 
         {/* Label Picker */}
         {isLabelPickerVisible && (
-          <Modal transparent visible={isLabelPickerVisible} animationType="fade">
-            <TouchableOpacity style={styles.statusPickerOverlay} activeOpacity={1} onPress={() => setIsLabelPickerVisible(false)}>
-              <View style={styles.statusPickerContent}>
-                <Text style={[styles.sectionTitle, { marginBottom: 15 }]}>Select Labels</Text>
-                <ScrollView style={{maxHeight: 300}}>
-                  {projectLabels.map((l) => {
+          <Modal transparent visible={isLabelPickerVisible} animationType="slide">
+            <View style={styles.pickerModalOverlay}>
+              <View style={styles.pickerModalContent}>
+                <View style={styles.pickerModalHeader}>
+                  <Text style={styles.pickerModalTitle}>Select Labels</Text>
+                  <TouchableOpacity onPress={() => { setIsLabelPickerVisible(false); setLabelSearch(''); }}>
+                    <Ionicons name="close" size={24} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.searchBox}>
+                  <Ionicons name="search" size={18} color="#555" />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search labels..."
+                    placeholderTextColor="#555"
+                    value={labelSearch}
+                    onChangeText={setLabelSearch}
+                  />
+                </View>
+
+                <ScrollView style={{maxHeight: 400}}>
+                  {filteredLabels.map((l) => {
                     const isSelected = task?.labels?.some((al: any) => al.id === l.id);
                     return (
                       <TouchableOpacity 
                         key={l.id} 
-                        style={styles.statusOption}
+                        style={styles.pickerItem}
                         onPress={() => {
                           let newIds = task?.labels?.map((al: any) => al.id) || [];
                           if (isSelected) newIds = newIds.filter((id: number) => id !== l.id);
@@ -563,15 +652,25 @@ export default function TaskDetailsDrawer({ visible, taskId, onClose, onTaskUpda
                           handleUpdateField({ labels_ids: newIds });
                         }}
                       >
-                         <Text style={[styles.statusOptionText, isSelected && { color: l.color || AppColors.accent }]}>
-                           {l.name} {isSelected ? '✓' : ''}
-                         </Text>
+                         <View style={styles.pickerItemLeft}>
+                            <View style={[styles.labelDot, { backgroundColor: l.color || AppColors.accent }]} />
+                            <Text style={[styles.pickerItemText, isSelected && { color: l.color || AppColors.accent, fontWeight: '700' }]}>
+                              {l.name}
+                            </Text>
+                         </View>
+                         {isSelected && <Ionicons name="checkmark-circle" size={22} color={AppColors.accent} />}
                       </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
+                <TouchableOpacity 
+                  style={styles.confirmBtn} 
+                  onPress={() => { setIsLabelPickerVisible(false); setLabelSearch(''); }}
+                >
+                  <Text style={styles.confirmBtnText}>DONE</Text>
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
+            </View>
           </Modal>
         )}
       </GestureHandlerRootView>
@@ -647,6 +746,35 @@ const styles = StyleSheet.create({
   descInput: { color: AppColors.white, fontSize: 15, paddingVertical: 10, minHeight: 60 },
   statusPickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 30 },
   statusPickerContent: { backgroundColor: AppColors.background, borderRadius: 20, padding: 20, borderSize: 1, borderColor: AppColors.border },
-  statusOption: { paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: AppColors.cardBackground },
   statusOptionText: { color: AppColors.white, fontSize: 16, fontWeight: '700' },
+  avatarList: { flexDirection: 'row', alignItems: 'center' },
+  metaValueTextMuted: { color: AppColors.textMuted, fontSize: 15, fontWeight: '600' },
+  labelPillList: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, flex: 1, justifyContent: 'flex-end' },
+  miniLabel: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  miniLabelText: { fontSize: 11, fontWeight: '700' },
+  pickerModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
+  pickerModalContent: { backgroundColor: '#161618', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, maxHeight: '80%' },
+  pickerModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  pickerModalTitle: { color: AppColors.white, fontSize: 18, fontWeight: '800' },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#000', borderRadius: 12, paddingHorizontal: 12, height: 48, marginBottom: 15, gap: 8, borderWidth: 1, borderColor: '#333' },
+  searchInput: { flex: 1, color: AppColors.white, fontSize: 14 },
+  pickerItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#222' },
+  pickerItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  pickerItemText: { color: '#ccc', fontSize: 15 },
+  pickerItemSubtext: { color: '#555', fontSize: 12 },
+  pickerAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: AppColors.accent + '22', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: AppColors.accent + '44' },
+  pickerAvatarText: { color: AppColors.accent, fontSize: 13, fontWeight: '800' },
+  labelDot: { width: 12, height: 12, borderRadius: 6, marginRight: 4 },
+  confirmBtn: { backgroundColor: AppColors.accent, borderRadius: 15, paddingVertical: 16, marginTop: 15, alignItems: 'center' },
+  confirmBtnText: { color: AppColors.background, fontSize: 15, fontWeight: '800' },
+  timelineContainer: { paddingLeft: 10, marginBottom: 30 },
+  timelineItem: { flexDirection: 'row', minHeight: 60 },
+  timelineLine: { width: 30, alignItems: 'center' },
+  timelineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: AppColors.accent, marginTop: 8 },
+  timelineConnector: { width: 2, flex: 1, backgroundColor: '#222', marginVertical: 4 },
+  timelineBody: { flex: 1, paddingBottom: 20 },
+  logTime: { color: '#555', fontSize: 11, marginTop: 4, fontWeight: '700' },
+  activityHeading: { color: AppColors.white, fontSize: 16, fontWeight: '800', marginBottom: 20, marginTop: 10 },
+  commentBubble: { backgroundColor: AppColors.cardBackground, padding: 12, borderRadius: 15, marginTop: 5, borderWidth: 1, borderColor: '#222' },
+  emptyActivityCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#1a1a1e', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#333' },
 });
