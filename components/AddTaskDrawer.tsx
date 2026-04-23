@@ -20,6 +20,7 @@ import {
   fetchLabels,
   fetchTasks,
   createLabel,
+  createBoardColumn,
   createTask,
   fetchBoards,
 } from '@/lib/api';
@@ -90,6 +91,9 @@ export default function AddTaskDrawer({ visible, onClose, defaultBoardId, defaul
   const [newLabelName, setNewLabelName] = useState('');
   const [isAddingLabel, setIsAddingLabel] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+  
+  const [newColumnName, setNewColumnName] = useState('');
+  const [isAddingColumn, setIsAddingColumn] = useState(false);
 
   // Start Animation IMMEDIATELY
   useEffect(() => {
@@ -180,6 +184,27 @@ export default function AddTaskDrawer({ visible, onClose, defaultBoardId, defaul
     }
   };
 
+  const handleCreateColumn = async () => {
+    if (!newColumnName.trim() || !defaultBoardId) return;
+    setIsAddingColumn(true);
+    try {
+      const res = await createBoardColumn({ name: newColumnName, board_id: defaultBoardId });
+      const col = res?.data ?? res;
+      
+      // Update local state instantly (Identity with Label creation)
+      setBoardColumns(prev => [...prev, col]);
+      setSelectedColumnId(col.id);
+      
+      setNewColumnName('');
+      setIsAddingColumn(false);
+      // We DO NOT close the modal here to match handleCreateLabel behavior
+      Toast.show({ type: 'success', text1: 'Phase created' });
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Phase Creation Failed' });
+      setIsAddingColumn(false);
+    }
+  };
+   
   const handleCreateTask = async () => {
     if (!title.trim() || !selectedColumnId || !defaultBoardId) {
       Toast.show({ type: 'error', text1: 'Missing fields' });
@@ -382,6 +407,29 @@ export default function AddTaskDrawer({ visible, onClose, defaultBoardId, defaul
                   </View>
                 )}
 
+                {pickerModal === 'column' && (
+                  <View style={styles.labelCreator}>
+                     <TextInput 
+                       style={styles.labelInput} 
+                       placeholder="New phase..." 
+                       placeholderTextColor={AppColors.textMuted} 
+                       value={newColumnName} 
+                       onChangeText={setNewColumnName} 
+                     />
+                     <TouchableOpacity 
+                       style={styles.labelBtn} 
+                       onPress={handleCreateColumn} 
+                       disabled={isAddingColumn || !newColumnName.trim()}
+                     >
+                       {isAddingColumn ? (
+                         <ActivityIndicator size="small" color="#fff" />
+                       ) : (
+                         <Ionicons name="add" size={24} color="#fff" />
+                       )}
+                     </TouchableOpacity>
+                  </View>
+                )}
+
                 {pickerModal === 'labels' && (
                   <View style={styles.labelCreator}>
                      <TextInput style={styles.labelInput} placeholder="New tag..." placeholderTextColor={AppColors.textMuted} value={newLabelName} onChangeText={setNewLabelName} />
@@ -404,7 +452,7 @@ export default function AddTaskDrawer({ visible, onClose, defaultBoardId, defaul
                       <TouchableOpacity style={styles.listRow} onPress={() => {
                         if (pickerModal === 'column') { setSelectedColumnId(item.id); setPickerModal(null); }
                         if (pickerModal === 'users') setSelectedUserIds(pv => pv.includes(item.id) ? pv.filter(id => id !== item.id) : [...pv, item.id]);
-                        if (pickerModal === 'labels') setSelectedLabelIds(pv => pv.includes(item.id) ? pv.filter(id => id !== item.id) : [...pv, id !== item.id]);
+                        if (pickerModal === 'labels') setSelectedLabelIds(pv => pv.includes(item.id) ? pv.filter(id => id !== item.id) : [...pv, item.id]);
                       }}>
                         <View style={styles.listRowLeft}>
                            {pickerModal === 'users' && <View style={styles.avatarCircle}><Text style={styles.avatarText}>{(item.first_name || 'U')[0]}</Text></View>}

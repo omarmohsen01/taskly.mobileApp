@@ -21,6 +21,7 @@ import {
   fetchBoards,
   fetchLabels,
   createLabel,
+  createBoardColumn,
   createTask,
 } from '@/lib/api';
 import * as DocumentPicker from 'expo-document-picker';
@@ -81,6 +82,10 @@ export default function AddTaskScreen() {
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#ffffff');
   const colors = ['#ffffff', '#ff4d4f', '#ffa940', '#fadb14', '#52c41a', '#1890ff', '#722ed1'];
+  
+  // New Column State
+  const [isAddingColumn, setIsAddingColumn] = useState(false);
+  const [newColumnName, setNewColumnName] = useState('');
 
   useEffect(() => {
     loadInitialData();
@@ -183,6 +188,30 @@ export default function AddTaskScreen() {
     } catch (e: any) {
       Toast.show({ type: 'error', text1: 'Failed to create label', text2: e.message });
       setIsAddingLabel(false);
+    }
+  };
+
+  const handleCreateColumn = async () => {
+    if (!newColumnName.trim() || !selectedBoardId) return;
+    setIsAddingColumn(true);
+    try {
+      const res = await createBoardColumn({
+        name: newColumnName,
+        board_id: selectedBoardId,
+      });
+      const col = res?.data ?? res;
+      
+      // Update local state instantly (Identity with Label creation)
+      setBoardColumns((prev) => [...prev, col]);
+      setSelectedColumnId(col.id);
+      
+      setNewColumnName('');
+      setIsAddingColumn(false);
+      // We DO NOT close the modal here to match handleCreateLabel behavior
+      Toast.show({ type: 'success', text1: 'Phase created' });
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Failed to create phase', text2: e.message });
+      setIsAddingColumn(false);
     }
   };
 
@@ -438,6 +467,31 @@ export default function AddTaskScreen() {
                 <Ionicons name="close" size={22} color={AppColors.white} />
               </TouchableOpacity>
             </View>
+
+            {modalVisible === 'column' && (
+              <View style={styles.addLabelSection}>
+                <View style={styles.addLabelRow}>
+                  <TextInput
+                    style={styles.addLabelInput}
+                    placeholder="New phase name..."
+                    placeholderTextColor={AppColors.textMuted}
+                    value={newColumnName}
+                    onChangeText={setNewColumnName}
+                  />
+                  <TouchableOpacity 
+                    style={styles.addLabelBtn} 
+                    onPress={handleCreateColumn} 
+                    disabled={isAddingColumn || !newColumnName.trim()}
+                  >
+                    {isAddingColumn ? (
+                      <ActivityIndicator color={AppColors.white} size="small" />
+                    ) : (
+                      <Ionicons name="add" size={18} color={AppColors.white} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
             {modalVisible === 'labels' && (
               <View style={styles.addLabelSection}>

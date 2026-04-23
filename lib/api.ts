@@ -249,6 +249,17 @@ export async function createLabel(payload: {
   return apiPostForm('labels', data);
 }
 
+export async function createBoardColumn(payload: {
+  name: string;
+  board_id: string | number;
+}) {
+  const data: Record<string, any> = {
+    name: payload.name,
+    board_id: String(payload.board_id),
+  };
+  return apiPostForm('board-columns', data);
+}
+
 export async function createTask(payload: {
   title: string;
   descriptions?: string;
