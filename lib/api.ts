@@ -485,3 +485,11 @@ export async function deleteNote(noteId: string | number) {
   return apiPostForm(`notes/${noteId}`, data);
 }
 
+// ─── Attachments / Docs API ──────────────────────────────────────────────────
+
+export async function fetchAttachments(workspaceId?: string | number) {
+  const url = workspaceId ? `attachments?workspace_id=${workspaceId}` : 'attachments';
+  return apiGet(url);
+}
+
+

@@ -24,7 +24,7 @@ type MoreItem = {
 };
 
 const MORE_ITEMS: MoreItem[] = [
-  { icon: 'document-text', label: 'Docs', color: '#4285F4' },
+  { icon: 'document-text', label: 'Docs', color: '#4285F4', route: '/docs' },
   { icon: 'sparkles', label: 'Brain', color: '#FF6B6B', route: 'ai-assistant' },
   { icon: 'planet', label: 'Spaces', color: '#7C4DFF', route: 'spaces' },
   { icon: 'reader', label: 'Notepad', color: '#FF9800', route: '/notepad' },

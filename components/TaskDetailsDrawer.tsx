@@ -361,9 +361,16 @@ export default function TaskDetailsDrawer({ visible, taskId, onClose, onTaskUpda
   };
 
   const renderActivity = () => (
-    <View style={{flex:1}}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.tabContent, { paddingBottom: 100 }]}>
-         {/* Real Activity Logs with Timeline Aesthetic */}
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
+    >
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={[styles.tabContent, { paddingBottom: 20 }]}
+      >
+         {/* Timeline / Activity Logs */}
          <View style={styles.timelineContainer}>
             {task?.activities?.map((activity: any, i: number) => (
               <View key={`activity-${activity.id || i}`} style={styles.timelineItem}>
@@ -410,16 +417,12 @@ export default function TaskDetailsDrawer({ visible, taskId, onClose, onTaskUpda
          )}
       </ScrollView>
 
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
-        <View style={[styles.commentInputBar, { paddingBottom: Math.max(insets.bottom, 40), marginBottom: 10 }]}>
-           <TouchableOpacity style={styles.commentAttach}><Ionicons name="add" size={24} color="#888" /></TouchableOpacity>
+      <View style={[styles.commentInputBar, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+         <View style={styles.commentInputWrapper}>
            <TextInput 
              style={styles.commentInput} 
-             placeholder="Write a comment" 
-             placeholderTextColor="#555" 
+             placeholder="Write a comment..." 
+             placeholderTextColor="#888" 
              value={newComment}
              onChangeText={setNewComment}
              multiline
@@ -427,12 +430,14 @@ export default function TaskDetailsDrawer({ visible, taskId, onClose, onTaskUpda
            />
            {newComment.trim() ? (
               <TouchableOpacity style={styles.sendBtn} onPress={handlePostComment}>
-                 <Ionicons name="send" size={20} color={AppColors.background} />
+                 <Ionicons name="send" size={18} color={AppColors.background} />
               </TouchableOpacity>
-           ) : null}
-        </View>
-      </KeyboardAvoidingView>
-    </View>
+           ) : (
+             <View style={{ width: 32 }} /> // Placeholder for send button space
+           )}
+         </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 
   return (
@@ -732,17 +737,39 @@ const styles = StyleSheet.create({
   commentTime: { color: AppColors.textMuted, fontSize: 12, marginLeft: 8 },
   commentText: { color: AppColors.textSecondary, fontSize: 13, lineHeight: 18, marginTop: 2 },
   commentInputBar: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: AppColors.surface, 
+    backgroundColor: AppColors.background, 
     borderTopWidth: 1, 
     borderTopColor: AppColors.border, 
-    padding: 10,
-    minHeight: 65
+    paddingHorizontal: 15,
+    paddingTop: 10,
   },
-  commentAttach: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  commentInput: { flex: 1, color: AppColors.white, fontSize: 14, minHeight: 40, paddingHorizontal: 10 },
-  sendBtn: { width: 40, height: 40, backgroundColor: AppColors.accent, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginLeft: 10 },
+  commentInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: AppColors.cardBackground,
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+  },
+  commentInput: { 
+    flex: 1, 
+    color: AppColors.white, 
+    fontSize: 14, 
+    minHeight: 40, 
+    maxHeight: 100,
+    paddingVertical: 8,
+  },
+  sendBtn: { 
+    width: 32, 
+    height: 32, 
+    backgroundColor: AppColors.accent, 
+    borderRadius: 16, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginLeft: 10 
+  },
   descInput: { color: AppColors.white, fontSize: 15, paddingVertical: 10, minHeight: 60 },
   statusPickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 30 },
   statusPickerContent: { backgroundColor: AppColors.background, borderRadius: 20, padding: 20, borderSize: 1, borderColor: AppColors.border },
