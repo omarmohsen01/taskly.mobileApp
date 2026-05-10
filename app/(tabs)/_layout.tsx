@@ -18,7 +18,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="calendar"
-        options={{ title: 'Calendar' }}
+        options={{ title: 'Planner' }}
       />
       <Tabs.Screen
         name="ai-assistant"

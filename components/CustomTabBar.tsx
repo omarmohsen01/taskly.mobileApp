@@ -27,7 +27,7 @@ const MORE_ITEMS: MoreItem[] = [
   { icon: 'sparkles', label: 'Brain', color: '#FF6B6B', route: 'ai-assistant' },
   { icon: 'planet', label: 'Spaces', color: '#7C4DFF', route: 'spaces' },
   { icon: 'reader', label: 'Notepad', color: '#FF9800' },
-  { icon: 'calendar-number', label: 'Planner', color: '#E91E63' },
+  { icon: 'calendar-number', label: 'Planner', color: '#E91E63', route: 'calendar' },
   { icon: 'chatbubbles', label: 'Chats', color: '#00897B' },
 ];
 

@@ -19,6 +19,7 @@ import {
   View
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import ShareWorkspaceModal from '@/components/ShareWorkspaceModal';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -55,22 +56,20 @@ interface Board {
 }
 
 interface Statistics {
-  total?: number;
-  completed?: number;
-  in_progress?: number;
-  today?: number;
-  overdue?: number;
-  completion_rate?: number;
-  [key: string]: any;
+  daily_productivity?: {
+    total: number;
+    completed: number;
+    percentage: number;
+  };
+  priority_progress?: {
+    total: number;
+    completed: number;
+    percentage: number;
+  };
+  tasks?: any[];
 }
 
-const myTaskTabs = ['All', 'Today', 'In Progress', 'Completed'];
-const tabToFilterMap: Record<string, StatFilter> = {
-  'All': 'all',
-  'Today': 'today',
-  'In Progress': 'in_progress',
-  'Completed': 'completed',
-};
+
 
 // ─── No Workspace Screen ──────────────────────────────────────────────────────
 function NoWorkspaceScreen() {
@@ -116,12 +115,13 @@ export default function HomeScreen() {
   const [spacesList, setSpacesList] = useState<Space[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [profile, setProfile] = useState<any>(null);
 
   // Statistics state
   const [stats, setStats] = useState<Statistics | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
+
 
   // UI State
   const [spacesExpanded, setSpacesExpanded] = useState(true);
@@ -158,11 +158,11 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const loadStats = useCallback(async (workspaceId: number | null, filter: StatFilter) => {
+  const loadStats = useCallback(async (workspaceId: number | null) => {
     if (workspaceId === null) return;
     setStatsLoading(true);
     try {
-      const resp = await fetchStatistics(workspaceId, filter);
+      const resp = await fetchStatistics(workspaceId);
       const data = resp?.data ?? resp?.statistics ?? resp ?? {};
       setStats(data);
     } catch (e) {
@@ -186,12 +186,11 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!token || selectedWorkspaceId === null) return;
-      const filter = tabToFilterMap[myTaskTabs[activeTab]] || 'all';
-      loadStats(selectedWorkspaceId, filter);
+      loadStats(selectedWorkspaceId);
       loadSpaces(selectedWorkspaceId);
       loadWorkspaces();
       fetchProfile().then(p => setProfile(p?.data || p)).catch(e => console.error(e));
-    }, [token, activeTab, selectedWorkspaceId])
+    }, [token, selectedWorkspaceId])
   );
 
   const onRefresh = useCallback(async () => {
@@ -199,14 +198,14 @@ export default function HomeScreen() {
     if (selectedWorkspaceId !== null) {
       await Promise.all([
         loadWorkspaces(),
-        loadStats(selectedWorkspaceId, tabToFilterMap[myTaskTabs[activeTab]] || 'all'),
+        loadStats(selectedWorkspaceId),
         loadSpaces(selectedWorkspaceId)
       ]);
     } else {
       await loadWorkspaces();
     }
     setRefreshing(false);
-  }, [activeTab, selectedWorkspaceId]);
+  }, [selectedWorkspaceId]);
 
   const handleSelectWorkspace = (id: number) => {
     setSelectedWorkspaceId(id);
@@ -233,10 +232,9 @@ export default function HomeScreen() {
   }
 
   // Derived data
-  const todayTasks = tasks.filter(t => t.board_column_id !== 3);
-  const total = stats?.total ?? 0;
-  const completed = stats?.completed ?? 0;
-  const percentage = stats?.completion_rate ?? (total > 0 ? (completed / total) * 100 : 0);
+  const priorityStats = stats?.priority_progress || { total: 0, completed: 0, percentage: 0 };
+  const dailyStats = stats?.daily_productivity || { total: 0, completed: 0, percentage: 0 };
+  const todayTasksList = stats?.tasks || [];
 
   return (
     <View style={styles.container}>
@@ -271,7 +269,16 @@ export default function HomeScreen() {
             <Ionicons name="chevron-down" size={16} color={AppColors.textMuted} />
           </View>
           <View style={styles.workspaceRight}>
-            <TouchableOpacity style={styles.workspaceAction}>
+            <TouchableOpacity 
+              style={styles.workspaceAction}
+              onPress={() => setShowShareModal(true)}
+            >
+              <Ionicons name="share-outline" size={18} color={AppColors.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.workspaceAction}
+              onPress={() => router.push('/notifications')}
+            >
               <Ionicons name="notifications-outline" size={18} color={AppColors.textMuted} />
             </TouchableOpacity>
             <Image
@@ -302,10 +309,14 @@ export default function HomeScreen() {
             <Text style={styles.notifCardTitle}>Activity</Text>
             <Text style={styles.notifCardSub}>-</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.notifCard} activeOpacity={0.7}>
+          <TouchableOpacity 
+            style={styles.notifCard} 
+            activeOpacity={0.7}
+            onPress={() => router.push('/notifications')}
+          >
             <Ionicons name="mail-outline" size={20} color={AppColors.white} />
             <Text style={styles.notifCardTitle}>Inbox</Text>
-            <Text style={styles.notifCardSub}>0 unread</Text>
+            <Text style={styles.notifCardSub}>Check invites</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -468,15 +479,27 @@ export default function HomeScreen() {
           <Text style={styles.sectionDate}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </Text>
+          <View style={[styles.progressBarRow, { marginTop: 10 }]}>
+            <View style={styles.progressBarBg}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${dailyStats.percentage}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.progressPercent}>{dailyStats.percentage.toFixed(0)}%</Text>
+          </View>
+          <Text style={{ color: AppColors.textMuted, fontSize: 12, marginTop: 4 }}>
+            {dailyStats.completed}/{dailyStats.total} Tasks Completed
+          </Text>
         </View>
 
         {/* Priority Task Progress Card */}
         <View style={styles.progressCard}>
           <View style={styles.progressHeader}>
             <Text style={styles.progressTitle}>Priority Task Progress</Text>
-            <TouchableOpacity>
-              <Ionicons name="close" size={20} color={AppColors.textMuted} />
-            </TouchableOpacity>
+
           </View>
           <View style={styles.progressBody}>
             {statsLoading ? (
@@ -484,118 +507,84 @@ export default function HomeScreen() {
             ) : (
               <>
                 <Text style={styles.progressSubtitle}>
-                  {completed}/{total} is Completed
+                  {priorityStats.completed}/{priorityStats.total} is Completed
                 </Text>
                 <View style={styles.progressBarRow}>
                   <View style={styles.progressBarBg}>
                     <View
                       style={[
                         styles.progressBarFill,
-                        { width: `${percentage}%` },
+                        { width: `${priorityStats.percentage}%` },
                       ]}
                     />
                   </View>
-                  <Text style={styles.progressPercent}>{percentage.toFixed(0)}%</Text>
+                  <Text style={styles.progressPercent}>{priorityStats.percentage.toFixed(0)}%</Text>
                 </View>
               </>
             )}
           </View>
         </View>
 
-        {/* My Task Section */}
-        <View style={styles.myTaskSection}>
-          <Text style={styles.myTaskTitle}>My Task</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tabsContainer}
-          >
-            {myTaskTabs.map((tab, index) => (
-              <TouchableOpacity
-                key={tab}
-                style={[
-                  styles.tabButton,
-                  activeTab === index && styles.tabButtonActive,
-                ]}
-                onPress={() => setActiveTab(index)}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    activeTab === index && styles.tabTextActive,
-                  ]}
-                >
-                  {tab}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+
 
         {/* Today's Task */}
         <View style={styles.todaySection}>
           <View style={styles.todayHeader}>
             <Text style={styles.todayTitle}>Today's Task</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
+
           </View>
 
-          {todayTasks.map((task) => (
+          {todayTasksList.map((task) => (
             <TouchableOpacity
               key={task.id}
               style={styles.taskCard}
               activeOpacity={0.7}
-              onPress={() => router.push('/task-details')}
+              onPress={() => router.push({ pathname: '/task-details', params: { taskId: task.id } })}
             >
               <View style={styles.labelRow}>
-                {task.labels.map((labelId) => {
-                  const label = labels.find(l => l.id === labelId);
-                  if (!label) return null;
-                  return (
-                    <View key={label.id} style={styles.labelChip}>
-                      <Text style={styles.labelText}>{label.name}</Text>
-                    </View>
-                  );
-                })}
+                {task.labels?.map((label: any) => (
+                  <View key={label.id} style={styles.labelChip}>
+                    <Text style={styles.labelText}>{label.name}</Text>
+                  </View>
+                ))}
               </View>
 
               <Text style={styles.taskTitle}>{task.title}</Text>
-              <Text style={styles.taskDesc}>{task.descriptions}</Text>
+              <Text style={styles.taskDesc} numberOfLines={2}>{task.descriptions}</Text>
 
               <View style={styles.taskFooter}>
                 <View style={styles.assigneeRow}>
-                  {task.assignees.slice(0, 3).map((userId, idx) => {
-                    const user = users.find(u => u.id === userId);
-                    return (
-                      <Image
-                        key={userId}
-                        source={{ uri: user?.avatar || 'https://i.pravatar.cc/150' }}
-                        style={[styles.assigneeAvatar, idx > 0 && { marginLeft: -10 }]}
-                      />
-                    );
-                  })}
-                  {task.assignees.length > 3 && (
+                  {task.users?.slice(0, 3).map((user: any, idx: number) => (
+                    <Image
+                      key={user.id}
+                      source={{ uri: user.avatar || 'https://ui-avatars.com/api/?name=' + user.first_name }}
+                      style={[styles.assigneeAvatar, idx > 0 && { marginLeft: -10 }]}
+                    />
+                  ))}
+                  {(task.users?.length || 0) > 3 && (
                     <View style={[styles.assigneeMore, { marginLeft: -10 }]}>
-                      <Text style={styles.assigneeMoreText}>+{task.assignees.length - 3}</Text>
+                      <Text style={styles.assigneeMoreText}>+{(task.users?.length || 0) - 3}</Text>
                     </View>
                   )}
-                  <TouchableOpacity style={[styles.addAssignee, { marginLeft: -10 }]}>
-                    <Ionicons name="add" size={14} color={AppColors.accent} />
-                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={styles.editButton}>
-                  <Ionicons name="create-outline" size={18} color={AppColors.accent} />
-                </TouchableOpacity>
+                <View style={styles.taskStatusBadge}>
+                  <Text style={styles.taskStatusText}>{task.board_column?.name}</Text>
+                </View>
               </View>
 
               <View style={styles.taskMeta}>
-                <Text style={styles.metaText}>{task.projectName}</Text>
-                <Text style={styles.metaText}>Prototype</Text>
-                <Text style={styles.metaText}>15 Sept</Text>
+                <Text style={styles.metaText}>{task.priority}</Text>
+                <Text style={styles.metaText}>
+                  {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No date'}
+                </Text>
               </View>
             </TouchableOpacity>
           ))}
+          {todayTasksList.length === 0 && (
+            <Text style={{ color: AppColors.textMuted, textAlign: 'center', marginTop: 20 }}>
+              No tasks for today
+            </Text>
+          )}
         </View>
 
         <View style={{ height: 100 }} />
@@ -671,6 +660,15 @@ export default function HomeScreen() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {selectedWorkspaceId && (
+        <ShareWorkspaceModal
+          visible={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          workspaceId={selectedWorkspaceId}
+          workspaceName={currentWorkspace?.name || ''}
+        />
+      )}
     </View>
   );
 }
@@ -1192,6 +1190,19 @@ const styles = StyleSheet.create({
     color: AppColors.white,
     fontSize: 16,
     fontWeight: '700',
+  },
+  taskStatusBadge: {
+    backgroundColor: 'rgba(170,202,239,0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(170,202,239,0.2)',
+  },
+  taskStatusText: {
+    color: AppColors.accent,
+    fontSize: 11,
+    fontWeight: '600',
   },
 });
 

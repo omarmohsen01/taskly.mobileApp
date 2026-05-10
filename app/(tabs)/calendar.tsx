@@ -15,6 +15,7 @@ import { fetchCalendarTasks } from '@/lib/api';
 import TaskDetailsDrawer from '@/components/TaskDetailsDrawer';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Platform } from 'react-native';
+import { useRouter } from 'expo-router';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
@@ -35,6 +36,7 @@ const parseLocalDateString = (dateStr: string) => {
 };
 
 export default function CalendarScreen() {
+  const router = useRouter();
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(getLocalDateString(today));
   const [baseDate, setBaseDate] = useState(today);
@@ -111,7 +113,7 @@ export default function CalendarScreen() {
       <View style={styles.fixedHeader}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Calendar</Text>
+          <Text style={styles.headerTitle}>Planner</Text>
           <TouchableOpacity style={styles.notifButton}>
             <Ionicons name="notifications-outline" size={22} color={AppColors.white} />
           </TouchableOpacity>
@@ -266,13 +268,21 @@ export default function CalendarScreen() {
         )
       )}
 
-      {/* Details Drawer */}
       <TaskDetailsDrawer 
         visible={isDetailsVisible}
         taskId={selectedTaskId}
         onClose={() => setIsDetailsVisible(false)}
         onTaskUpdated={loadTasks}
       />
+
+      {/* Floating Action Button */}
+      <TouchableOpacity 
+        style={styles.fab} 
+        activeOpacity={0.8}
+        onPress={() => router.push('/add-task')}
+      >
+        <Ionicons name="add" size={32} color={AppColors.background} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -499,5 +509,27 @@ const styles = StyleSheet.create({
     color: AppColors.accent,
     fontSize: 16,
     fontWeight: '700',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 110,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: AppColors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: AppColors.accent,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
   },
 });

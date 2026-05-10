@@ -6,23 +6,27 @@ let inMemoryToken: string | null = null;
 export let isHydrated = false;
 
 function getBaseUrl(): string {
+  let url = '';
   // If explicitly provided via our new .env file
   if (process.env.EXPO_PUBLIC_API_URL) {
-    const url = process.env.EXPO_PUBLIC_API_URL;
-    return url.endsWith('/') ? url : `${url}/`;
+    url = process.env.EXPO_PUBLIC_API_URL;
+    url = url.endsWith('/') ? url : `${url}/`;
+  } else {
+    const extra = (Constants.expoConfig as any)?.extra || (Constants as any)?.manifest2?.extra;
+
+    // Dynamic host injection for physical devices testing on the same Wi-Fi
+    const hostUri = Constants?.expoConfig?.hostUri;
+    if (Platform.OS !== 'web' && hostUri) {
+      const ip = hostUri.split(':')[0]; // Extract the IP address (e.g., 192.168.1.100)
+      url = `http://${ip}:8000/api/`;
+    } else {
+      // Fallback for Web browser or PC-based Emulators mapped directly via proxy layer
+      url = 'http://127.0.0.1:8000/api/';
+    }
   }
 
-  const extra = (Constants.expoConfig as any)?.extra || (Constants as any)?.manifest2?.extra;
-
-  // Dynamic host injection for physical devices testing on the same Wi-Fi
-  const hostUri = Constants?.expoConfig?.hostUri;
-  if (Platform.OS !== 'web' && hostUri) {
-    const ip = hostUri.split(':')[0]; // Extract the IP address (e.g., 192.168.1.100)
-    return `http://${ip}:8000/api/`;
-  }
-
-  // Fallback for Web browser or PC-based Emulators mapped directly via proxy layer
-  return 'http://127.0.0.1:8000/api/';
+  console.log('[API] Base URL:', url);
+  return url;
 }
 
 export function getToken(): string | null {
@@ -39,6 +43,31 @@ export async function hydrateToken(): Promise<void> {
 export async function setToken(token: string | null) {
   inMemoryToken = token;
   await persistToken(token);
+}
+
+export async function apiPost(path: string, data: Record<string, any>): Promise<any> {
+  if (!isHydrated) await hydrateToken();
+  const res = await fetch(getBaseUrl() + path.replace(/^\//, ''), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+    },
+    body: JSON.stringify(data),
+  });
+  const text = await res.text();
+  let json: any;
+  try {
+    json = text ? JSON.parse(text) : {};
+  } catch {
+    json = { raw: text };
+  }
+  if (!res.ok) {
+    const message = json?.message || json?.error || `Request failed (${res.status})`;
+    throw new Error(message);
+  }
+  return json;
 }
 
 export async function apiPostForm(path: string, data: Record<string, any>): Promise<any> {
@@ -100,7 +129,7 @@ export async function apiGet(path: string): Promise<any> {
 }
 
 export async function signIn(email: string, password: string) {
-  const resp = await apiPostForm('auth/signIn', { email, password });
+  const resp = await apiPost('auth/signIn', { email, password });
   const token = resp?.token || resp?.data?.token || resp?.access_token || resp?.data?.access_token;
   if (token) await setToken(token);
   return resp;
@@ -114,7 +143,7 @@ export async function signUp(payload: {
   email: string;
   password: string;
 }) {
-  const resp = await apiPostForm('auth/signUp', payload);
+  const resp = await apiPost('auth/signUp', payload);
   const token = resp?.token || resp?.data?.token || resp?.access_token || resp?.data?.access_token;
   if (token) await setToken(token);
   return resp;
@@ -360,8 +389,8 @@ export async function createComment(payload: {
 
 export type StatFilter = 'all' | 'today' | 'completed' | 'in_progress';
 
-export async function fetchStatistics(workspaceId: number | string, filter: StatFilter = 'all') {
-  return apiGet(`home/statistics?workspace_id=${workspaceId}&filter=${filter}`);
+export async function fetchStatistics(workspaceId: number | string) {
+  return apiGet(`home/statistics?workspace_id=${workspaceId}`);
 }
 
 export async function signOut() {
@@ -390,4 +419,36 @@ export async function sendMessageToAI(message: string, sessionId?: number | stri
 
 export async function fetchAISessions() {
   return apiGet('ai/sessions');
+}
+
+export async function searchUsers(query: string) {
+  return apiGet(`users/search?query=${encodeURIComponent(query)}`);
+}
+
+export async function sendInvitations(payload: {
+  workspace_id: number;
+  user_ids: number[];
+  space_ids?: number[];
+  project_ids?: number[];
+}) {
+  const data: Record<string, any> = {
+    workspace_id: String(payload.workspace_id),
+  };
+  payload.user_ids.forEach((id, i) => data[`user_ids[${i}]`] = String(id));
+  if (payload.space_ids) payload.space_ids.forEach((id, i) => data[`space_ids[${i}]`] = String(id));
+  if (payload.project_ids) payload.project_ids.forEach((id, i) => data[`project_ids[${i}]`] = String(id));
+  
+  return apiPostForm('invitations/send', data);
+}
+
+export async function fetchNotifications() {
+  return apiGet('notifications');
+}
+
+export async function acceptInvitation(invitationId: number | string) {
+  return apiPostForm(`invitations/${invitationId}/accept`, {});
+}
+
+export async function rejectInvitation(invitationId: number | string) {
+  return apiPostForm(`invitations/${invitationId}/reject`, {});
 }

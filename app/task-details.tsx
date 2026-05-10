@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,25 +7,58 @@ import {
   TouchableOpacity,
   Image,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
-import { taskDetails, users } from '@/constants/dummyData';
+import { fetchTaskDetails } from '@/lib/api';
 
 export default function TaskDetailsScreen() {
   const router = useRouter();
-  const [subtasks, setSubtasks] = useState(taskDetails.subtasks);
+  const { taskId } = useLocalSearchParams();
+  const [task, setTask] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const toggleSubtask = (id: number) => {
-    setSubtasks(prev =>
-      prev.map(st =>
-        st.id === id ? { ...st, completed: !st.completed } : st
-      )
-    );
+  useEffect(() => {
+    if (taskId) {
+      loadTaskDetails();
+    }
+  }, [taskId]);
+
+  const loadTaskDetails = async () => {
+    setLoading(true);
+    try {
+      const resp = await fetchTaskDetails(taskId as string);
+      setTask(resp?.data || resp);
+    } catch (e) {
+      console.error('Failed to load task details:', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const completedCount = subtasks.filter(st => st.completed).length;
+  if (loading) {
+    return (
+      <View style={styles.centerScreen}>
+        <ActivityIndicator color={AppColors.accent} size="large" />
+      </View>
+    );
+  }
+
+  if (!task) {
+    return (
+      <View style={styles.centerScreen}>
+        <Text style={{ color: AppColors.white }}>Task not found</Text>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={{ color: AppColors.accent, marginTop: 10 }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const subtasks = task.subtasks || [];
+  const completedCount = subtasks.filter((st: any) => st.completed).length;
   const progress = subtasks.length > 0 ? (completedCount / subtasks.length) * 100 : 0;
 
   return (
@@ -48,10 +81,10 @@ export default function TaskDetailsScreen() {
 
         {/* Task Title & Priority */}
         <View style={styles.taskHeader}>
-          <Text style={styles.taskTitle}>{taskDetails.title}</Text>
+          <Text style={styles.taskTitle}>{task.title}</Text>
           <View style={styles.priorityBadge}>
             <Ionicons name="flag" size={14} color={AppColors.warning} />
-            <Text style={styles.priorityText}>{taskDetails.priority}</Text>
+            <Text style={styles.priorityText}>{task.priority}</Text>
           </View>
         </View>
 
@@ -70,10 +103,10 @@ export default function TaskDetailsScreen() {
         <View style={styles.assigneesSection}>
           <Text style={styles.sectionLabel}>Assignees</Text>
           <View style={styles.assigneeRow}>
-            {users.slice(0, 4).map((user, idx) => (
+            {task.assigned_users?.map((user: any, idx: number) => (
               <Image
                 key={user.id}
-                source={{ uri: user.avatar }}
+                source={{ uri: user.avatar || 'https://ui-avatars.com/api/?name=' + user.first_name }}
                 style={[styles.assigneeAvatar, idx > 0 && { marginLeft: -10 }]}
               />
             ))}
@@ -86,84 +119,57 @@ export default function TaskDetailsScreen() {
         {/* Description */}
         <View style={styles.descriptionSection}>
           <Text style={styles.sectionLabel}>Description</Text>
-          <Text style={styles.descriptionText}>{taskDetails.descriptions}</Text>
+          <Text style={styles.descriptionText}>{task.descriptions || 'No description provided.'}</Text>
         </View>
 
         {/* Subtasks */}
-        <View style={styles.subtasksSection}>
-          <View style={styles.subtasksHeader}>
-            <Text style={styles.sectionLabel}>
-              Subtasks ({completedCount}/{subtasks.length})
-            </Text>
-            <TouchableOpacity>
-              <Ionicons name="add-circle-outline" size={22} color={AppColors.accent} />
-            </TouchableOpacity>
-          </View>
-
-          {subtasks.map((subtask) => (
-            <TouchableOpacity
-              key={subtask.id}
-              style={styles.subtaskRow}
-              onPress={() => toggleSubtask(subtask.id)}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  subtask.completed && styles.checkboxChecked,
-                ]}
-              >
-                {subtask.completed && (
-                  <Ionicons name="checkmark" size={14} color={AppColors.background} />
-                )}
-              </View>
-              <Text
-                style={[
-                  styles.subtaskText,
-                  subtask.completed && styles.subtaskTextCompleted,
-                ]}
-              >
-                {subtask.title}
+        {subtasks.length > 0 && (
+          <View style={styles.subtasksSection}>
+            <View style={styles.subtasksHeader}>
+              <Text style={styles.sectionLabel}>
+                Subtasks ({completedCount}/{subtasks.length})
               </Text>
-              <View
-                style={[
-                  styles.subtaskStatus,
-                  subtask.completed
-                    ? { backgroundColor: 'rgba(76,175,80,0.15)' }
-                    : { backgroundColor: 'rgba(255,167,38,0.15)' },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.statusDot,
-                    { backgroundColor: subtask.completed ? AppColors.success : AppColors.warning },
-                  ]}
-                />
+              <TouchableOpacity>
+                <Ionicons name="add-circle-outline" size={22} color={AppColors.accent} />
+              </TouchableOpacity>
+            </View>
+
+            {subtasks.map((subtask: any) => (
+              <View key={subtask.id} style={styles.subtaskRow}>
+                <View style={[styles.checkbox, subtask.completed && styles.checkboxChecked]}>
+                  {subtask.completed && <Ionicons name="checkmark" size={14} color={AppColors.background} />}
+                </View>
+                <Text style={[styles.subtaskText, subtask.completed && styles.subtaskTextCompleted]}>
+                  {subtask.title}
+                </Text>
               </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
 
         {/* Comments Section */}
         <View style={styles.commentsSection}>
-          <Text style={styles.sectionLabel}>Comments</Text>
-          <View style={styles.commentCard}>
-            <Image
-              source={{ uri: users[0].avatar }}
-              style={styles.commentAvatar}
-            />
-            <View style={styles.commentContent}>
-              <Text style={styles.commentAuthor}>
-                {users[0].first_name} {users[0].last_name}
-              </Text>
-              <Text style={styles.commentText}>
-                Great progress on this task! Let's discuss the next steps.
-              </Text>
-              <Text style={styles.commentTime}>2 hours ago</Text>
+          <Text style={styles.sectionLabel}>Comments ({task.comments_count || 0})</Text>
+          {task.comments?.map((comment: any) => (
+            <View key={comment.id} style={styles.commentCard}>
+              <Image
+                source={{ uri: comment.user?.avatar || 'https://ui-avatars.com/api/?name=' + comment.user?.first_name }}
+                style={styles.commentAvatar}
+              />
+              <View style={styles.commentContent}>
+                <Text style={styles.commentAuthor}>
+                  {comment.user?.first_name} {comment.user?.last_name}
+                </Text>
+                <Text style={styles.commentText}>{comment.comments}</Text>
+                <Text style={styles.commentTime}>{new Date(comment.created_at).toLocaleDateString()}</Text>
+              </View>
             </View>
-          </View>
+          ))}
+          {(task.comments?.length || 0) === 0 && (
+            <Text style={{ color: AppColors.textMuted }}>No comments yet.</Text>
+          )}
         </View>
 
-        {/* Bottom padding */}
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>
@@ -174,6 +180,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppColors.background,
+  },
+  centerScreen: {
+    flex: 1,
+    backgroundColor: AppColors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollContent: {
     paddingTop: 60,
@@ -327,18 +339,6 @@ const styles = StyleSheet.create({
     color: AppColors.textMuted,
     textDecorationLine: 'line-through',
   },
-  subtaskStatus: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
   commentsSection: {
     marginBottom: Spacing.xxl,
   },
@@ -347,6 +347,7 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.cardBackground,
     borderRadius: BorderRadius.md,
     padding: Spacing.lg,
+    marginBottom: Spacing.md,
     borderWidth: 1,
     borderColor: AppColors.border,
   },
