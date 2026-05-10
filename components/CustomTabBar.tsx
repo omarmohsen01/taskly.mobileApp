@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 type TabIconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -26,12 +27,13 @@ const MORE_ITEMS: MoreItem[] = [
   { icon: 'document-text', label: 'Docs', color: '#4285F4' },
   { icon: 'sparkles', label: 'Brain', color: '#FF6B6B', route: 'ai-assistant' },
   { icon: 'planet', label: 'Spaces', color: '#7C4DFF', route: 'spaces' },
-  { icon: 'reader', label: 'Notepad', color: '#FF9800' },
+  { icon: 'reader', label: 'Notepad', color: '#FF9800', route: '/notepad' },
   { icon: 'calendar-number', label: 'Planner', color: '#E91E63', route: 'calendar' },
   { icon: 'chatbubbles', label: 'Chats', color: '#00897B' },
 ];
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const centerIndex = 2; // AI Assistant is the center tab
   const [showMoreGrid, setShowMoreGrid] = useState(false);
@@ -53,7 +55,11 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                       onPress={() => {
                         setShowMoreGrid(false);
                         if (item.route) {
-                          navigation.navigate(item.route);
+                          if (item.route.startsWith('/')) {
+                            router.push(item.route as any);
+                          } else {
+                            navigation.navigate(item.route);
+                          }
                         }
                       }}
                     >

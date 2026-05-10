@@ -21,10 +21,10 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 const menuItems: { icon: IoniconsName; label: string; subtitle?: string; route?: string }[] = [
   { icon: 'person-outline', label: 'Edit Profile', subtitle: 'Update your information', route: '/edit-profile' },
   { icon: 'notifications-outline', label: 'Notifications', subtitle: 'Manage notifications' },
-  { icon: 'shield-outline', label: 'Privacy & Security', subtitle: 'Password, 2FA' },
+  { icon: 'shield-outline', label: 'Privacy & Security', subtitle: 'Password, 2FA', route: '/privacy-security' },
   { icon: 'color-palette-outline', label: 'Appearance', subtitle: 'Theme, colors' },
   { icon: 'language-outline', label: 'Language', subtitle: 'English' },
-  { icon: 'help-circle-outline', label: 'Help & Support', subtitle: 'FAQ, Contact us' },
+  { icon: 'help-circle-outline', label: 'Help & Support', subtitle: 'FAQ, Contact us', route: '/help-support' },
   { icon: 'information-circle-outline', label: 'About', subtitle: 'Version 1.0.0' },
 ];
 

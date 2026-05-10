@@ -86,6 +86,8 @@ export async function apiPostForm(path: string, data: Record<string, any>): Prom
         // Fallback to direct append if blob fails
         form.append(key, value as any);
       }
+    } else if (typeof value === 'boolean') {
+      form.append(key, value ? '1' : '0');
     } else if (value !== null && value !== undefined) {
       form.append(key, String(value));
     }
@@ -452,3 +454,34 @@ export async function acceptInvitation(invitationId: number | string) {
 export async function rejectInvitation(invitationId: number | string) {
   return apiPostForm(`invitations/${invitationId}/reject`, {});
 }
+
+// ─── Notes API ───────────────────────────────────────────────────────────────
+
+export async function fetchNotes() {
+  return apiGet('notes');
+}
+
+export async function fetchNoteDetails(noteId: string | number) {
+  return apiGet(`notes/${noteId}`);
+}
+
+export async function createNote(payload: { title?: string; content?: string; color?: string }) {
+  return apiPostForm('notes', payload);
+}
+
+export async function updateNote(noteId: string | number, payload: {
+  title?: string;
+  content?: string;
+  color?: string;
+  is_pinned?: boolean;
+}) {
+  const data: Record<string, any> = { ...payload };
+  data._method = 'PATCH';
+  return apiPostForm(`notes/${noteId}`, data);
+}
+
+export async function deleteNote(noteId: string | number) {
+  const data: Record<string, any> = { _method: 'DELETE' };
+  return apiPostForm(`notes/${noteId}`, data);
+}
+
