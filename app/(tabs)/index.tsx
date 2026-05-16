@@ -1,6 +1,6 @@
 import { currentUser, folders, labels, lists, spaces, tasks, users } from '@/constants/dummyData';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
-import { fetchStatistics, fetchWorkspaces, fetchSpaces, fetchProfile, updateWorkspace, deleteWorkspace, StatFilter } from '@/lib/api';
+import { fetchStatistics, fetchWorkspaces, fetchSpaces, fetchProfile, updateWorkspace, deleteWorkspace, updateSpace, deleteSpace, StatFilter } from '@/lib/api';
 import { useAuth } from '@/lib/auth-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -140,6 +140,11 @@ export default function HomeScreen() {
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [workspaceToDelete, setWorkspaceToDelete] = useState<number | null>(null);
 
+  const [editingSpaceId, setEditingSpaceId] = useState<number | null>(null);
+  const [editSpaceName, setEditSpaceName] = useState('');
+  const [isDeleteSpaceModalVisible, setIsDeleteSpaceModalVisible] = useState(false);
+  const [spaceToDelete, setSpaceToDelete] = useState<number | null>(null);
+
   const handleUpdateWorkspaceName = async () => {
     if (!editName.trim() || !editingWorkspaceId) return;
     try {
@@ -197,6 +202,36 @@ export default function HomeScreen() {
         text2: e?.message || 'Failed to delete workspace',
       });
       setIsDeleteModalVisible(false);
+    }
+  };
+
+  const handleUpdateSpaceName = async () => {
+    if (!editSpaceName.trim() || !editingSpaceId) return;
+    try {
+      await updateSpace(editingSpaceId, editSpaceName.trim());
+      Toast.show({ type: 'success', text1: 'Success', text2: 'Space name updated!' });
+      setEditingSpaceId(null);
+      if (selectedWorkspaceId) loadSpaces(selectedWorkspaceId);
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Error', text2: e?.message || 'Failed to update space' });
+    }
+  };
+
+  const handleDeleteSpace = (id: number) => {
+    setSpaceToDelete(id);
+    setIsDeleteSpaceModalVisible(true);
+  };
+
+  const confirmDeleteSpace = async () => {
+    if (!spaceToDelete) return;
+    try {
+      await deleteSpace(spaceToDelete);
+      Toast.show({ type: 'success', text1: 'Success', text2: 'Space deleted successfully!' });
+      setIsDeleteSpaceModalVisible(false);
+      if (selectedWorkspaceId) loadSpaces(selectedWorkspaceId);
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Error', text2: e?.message || 'Failed to delete space' });
+      setIsDeleteSpaceModalVisible(false);
     }
   };
 
@@ -457,9 +492,37 @@ export default function HomeScreen() {
                             {space.name.charAt(0).toLowerCase()}
                           </Text>
                         </View>
-                        <Text style={styles.spacesItemText}>{space.name}</Text>
+                        {editingSpaceId === space.id ? (
+                          <TextInput
+                            style={[styles.spacesItemText, { borderBottomWidth: 1, borderBottomColor: AppColors.accent, color: AppColors.white, paddingVertical: 0 }]}
+                            value={editSpaceName}
+                            onChangeText={setEditSpaceName}
+                            autoFocus
+                            onBlur={() => setEditingSpaceId(null)}
+                            onSubmitEditing={handleUpdateSpaceName}
+                          />
+                        ) : (
+                          <Text style={styles.spacesItemText}>{space.name}</Text>
+                        )}
                       </View>
                       <View style={styles.spaceActions}>
+                        {currentWorkspace?.is_owner && (
+                          <>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setEditingSpaceId(space.id);
+                                setEditSpaceName(space.name);
+                              }}
+                            >
+                              <Ionicons name="create-outline" size={18} color={AppColors.textMuted} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleDeleteSpace(space.id)}
+                            >
+                              <Ionicons name="trash-outline" size={18} color={AppColors.error} />
+                            </TouchableOpacity>
+                          </>
+                        )}
                         <TouchableOpacity 
                           activeOpacity={0.7}
                           onPress={() => router.push({ 
@@ -796,6 +859,14 @@ export default function HomeScreen() {
         onConfirm={confirmDeleteWorkspace}
         title="Delete workspace?"
         description="This will permanently delete this workspace and all its contents. This action cannot be undone."
+      />
+
+      <DeleteConfirmationModal
+        visible={isDeleteSpaceModalVisible}
+        onClose={() => setIsDeleteSpaceModalVisible(false)}
+        onConfirm={confirmDeleteSpace}
+        title="Delete space?"
+        description="This will permanently delete this space and all its contents. This action cannot be undone."
       />
     </View>
   );

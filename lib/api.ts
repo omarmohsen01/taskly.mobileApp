@@ -195,11 +195,6 @@ export async function createSpace(payload: {
   description: string;
   users?: number[];
 }) {
-  // Convert users array to users[0], users[1], etc. if needed by FormData
-  // But usually apiPostForm can handle flat objects. 
-  // If the backend expects users[0], users[1], we might need to adjust apiPostForm or the payload.
-  // Looking at Postman: "key": "users[0]". 
-  
   const data: Record<string, any> = {
     workspace_id: String(payload.workspace_id),
     name: payload.name,
@@ -213,6 +208,14 @@ export async function createSpace(payload: {
   }
 
   return apiPostForm('spaces', data);
+}
+
+export async function updateSpace(id: number | string, name: string) {
+  return apiPostForm(`spaces/${id}`, { name, _method: 'PATCH' });
+}
+
+export async function deleteSpace(id: number | string) {
+  return apiPostForm(`spaces/${id}`, { _method: 'DELETE' });
 }
 
 export async function createProject(payload: {
