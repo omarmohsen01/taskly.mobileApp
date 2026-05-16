@@ -1,15 +1,17 @@
 import { currentUser, folders, labels, lists, spaces, tasks, users } from '@/constants/dummyData';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
-import { fetchStatistics, fetchWorkspaces, fetchSpaces, fetchProfile, updateWorkspace, StatFilter } from '@/lib/api';
+import { fetchStatistics, fetchWorkspaces, fetchSpaces, fetchProfile, updateWorkspace, deleteWorkspace, StatFilter } from '@/lib/api';
 import { useAuth } from '@/lib/auth-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -22,6 +24,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import Toast from 'react-native-toast-message';
 import ShareWorkspaceModal from '@/components/ShareWorkspaceModal';
+import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -134,6 +137,9 @@ export default function HomeScreen() {
   const [editingWorkspaceId, setEditingWorkspaceId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
 
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [workspaceToDelete, setWorkspaceToDelete] = useState<number | null>(null);
+
   const handleUpdateWorkspaceName = async () => {
     if (!editName.trim() || !editingWorkspaceId) return;
     try {
@@ -151,6 +157,46 @@ export default function HomeScreen() {
         text1: 'Error',
         text2: e?.message || 'Failed to update workspace',
       });
+    }
+  };
+
+  const handleDeleteWorkspace = (id: number) => {
+    setWorkspaceToDelete(id);
+    setIsDeleteModalVisible(true);
+  };
+
+  const confirmDeleteWorkspace = async () => {
+    if (!workspaceToDelete) return;
+    const id = workspaceToDelete;
+    
+    try {
+      console.log('[DEBUG] Deleting workspace ID:', id);
+      const res = await deleteWorkspace(id);
+      console.log('[DEBUG] Delete response:', res);
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Workspace deleted successfully!',
+      });
+      
+      setIsDeleteModalVisible(false);
+      setWorkspaceToDelete(null);
+      
+      // If we deleted the currently selected workspace, clear it
+      if (selectedWorkspaceId === id) {
+        setSelectedWorkspaceId(null);
+      }
+      
+      await loadWorkspaces();
+    } catch (e: any) {
+      console.error('[DEBUG] Delete workspace error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: e?.message || 'Failed to delete workspace',
+      });
+      setIsDeleteModalVisible(false);
     }
   };
 
@@ -638,13 +684,15 @@ export default function HomeScreen() {
 
                 <ScrollView style={styles.workspaceList}>
                   {workspaces.map((ws) => (
-                    <TouchableOpacity
+                    <View
                       key={ws.id}
                       style={styles.workspaceItem}
-                      activeOpacity={0.7}
-                      onPress={() => handleSelectWorkspace(ws.id)}
                     >
-                      <View style={styles.workspaceItemLeft}>
+                      <TouchableOpacity
+                        style={styles.workspaceItemLeft}
+                        activeOpacity={0.7}
+                        onPress={() => handleSelectWorkspace(ws.id)}
+                      >
                         <View style={[
                           styles.workspaceItemIcon,
                           { backgroundColor: ws.id === selectedWorkspaceId ? AppColors.accent : AppColors.textMuted },
@@ -675,11 +723,11 @@ export default function HomeScreen() {
                             {ws.users_count ?? ws.members_count ?? 0} members • {ws.is_owner ? 'Owner' : 'Member'}
                           </Text>
                         </View>
-                      </View>
+                      </TouchableOpacity>
+
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                         <TouchableOpacity
-                          onPress={(e) => {
-                            e.stopPropagation();
+                          onPress={() => {
                             if (ws.is_owner) {
                               setEditingWorkspaceId(ws.id);
                               setEditName(ws.name);
@@ -699,11 +747,23 @@ export default function HomeScreen() {
                           />
                         </TouchableOpacity>
 
+                        {ws.is_owner && (
+                          <TouchableOpacity
+                            onPress={() => handleDeleteWorkspace(ws.id)}
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={20}
+                              color={AppColors.error}
+                            />
+                          </TouchableOpacity>
+                        )}
+
                         {ws.id === selectedWorkspaceId && (
                           <Ionicons name="checkmark" size={24} color={AppColors.accent} />
                         )}
                       </View>
-                    </TouchableOpacity>
+                    </View>
                   ))}
                 </ScrollView>
 
@@ -729,6 +789,14 @@ export default function HomeScreen() {
           workspaceName={currentWorkspace?.name || ''}
         />
       )}
+
+      <DeleteConfirmationModal
+        visible={isDeleteModalVisible}
+        onClose={() => setIsDeleteModalVisible(false)}
+        onConfirm={confirmDeleteWorkspace}
+        title="Delete workspace?"
+        description="This will permanently delete this workspace and all its contents. This action cannot be undone."
+      />
     </View>
   );
 }

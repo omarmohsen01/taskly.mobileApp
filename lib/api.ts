@@ -185,6 +185,10 @@ export async function updateWorkspace(id: number | string, name: string) {
   return apiPostForm(`workspaces/${id}`, { name, _method: 'PATCH' });
 }
 
+export async function deleteWorkspace(id: number | string) {
+  return apiPostForm(`workspaces/${id}`, { _method: 'DELETE' });
+}
+
 export async function createSpace(payload: {
   workspace_id: string | number;
   name: string;
