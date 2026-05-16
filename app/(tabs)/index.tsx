@@ -1,6 +1,6 @@
 import { currentUser, folders, labels, lists, spaces, tasks, users } from '@/constants/dummyData';
 import { AppColors, BorderRadius, Spacing } from '@/constants/theme';
-import { fetchStatistics, fetchWorkspaces, fetchSpaces, fetchProfile, StatFilter } from '@/lib/api';
+import { fetchStatistics, fetchWorkspaces, fetchSpaces, fetchProfile, updateWorkspace, StatFilter } from '@/lib/api';
 import { useAuth } from '@/lib/auth-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -14,11 +14,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import Toast from 'react-native-toast-message';
 import ShareWorkspaceModal from '@/components/ShareWorkspaceModal';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -128,6 +130,29 @@ export default function HomeScreen() {
   const [expandedSpaces, setExpandedSpaces] = useState<Record<number, boolean>>({});
   const [expandedFolders, setExpandedFolders] = useState<Record<number, boolean>>({});
   const [refreshing, setRefreshing] = useState(false);
+  
+  const [editingWorkspaceId, setEditingWorkspaceId] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
+
+  const handleUpdateWorkspaceName = async () => {
+    if (!editName.trim() || !editingWorkspaceId) return;
+    try {
+      await updateWorkspace(editingWorkspaceId, editName.trim());
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Workspace name updated!',
+      });
+      setEditingWorkspaceId(null);
+      loadWorkspaces();
+    } catch (e: any) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: e?.message || 'Failed to update workspace',
+      });
+    }
+  };
 
   const toggleSpace = (id: number) =>
     setExpandedSpaces(prev => ({ ...prev, [id]: !prev[id] }));
@@ -629,20 +654,55 @@ export default function HomeScreen() {
                           </Text>
                         </View>
                         <View style={styles.workspaceItemInfo}>
-                          <Text style={[
-                            styles.workspaceItemName,
-                            ws.id === selectedWorkspaceId && styles.workspaceItemNameActive,
-                          ]}>
-                            {ws.name}
-                          </Text>
+                          {editingWorkspaceId === ws.id ? (
+                            <TextInput
+                              style={[styles.workspaceItemName, { borderBottomWidth: 1, borderBottomColor: AppColors.accent, color: AppColors.white, paddingVertical: 0 }]}
+                              value={editName}
+                              onChangeText={setEditName}
+                              autoFocus
+                              onBlur={() => setEditingWorkspaceId(null)}
+                              onSubmitEditing={handleUpdateWorkspaceName}
+                            />
+                          ) : (
+                            <Text style={[
+                              styles.workspaceItemName,
+                              ws.id === selectedWorkspaceId && styles.workspaceItemNameActive,
+                            ]}>
+                              {ws.name}
+                            </Text>
+                          )}
                           <Text style={styles.workspaceItemMeta}>
                             {ws.users_count ?? ws.members_count ?? 0} members • {ws.is_owner ? 'Owner' : 'Member'}
                           </Text>
                         </View>
                       </View>
-                      {ws.id === selectedWorkspaceId && (
-                        <Ionicons name="checkmark" size={24} color={AppColors.accent} />
-                      )}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <TouchableOpacity
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            if (ws.is_owner) {
+                              setEditingWorkspaceId(ws.id);
+                              setEditName(ws.name);
+                            } else {
+                              Toast.show({
+                                type: 'error',
+                                text1: 'Access Denied',
+                                text2: 'you are not accssicable to change workspace name this feature for owners only',
+                              });
+                            }
+                          }}
+                        >
+                          <Ionicons
+                            name={ws.is_owner ? "create-outline" : "lock-closed-outline"}
+                            size={20}
+                            color={AppColors.textMuted}
+                          />
+                        </TouchableOpacity>
+
+                        {ws.id === selectedWorkspaceId && (
+                          <Ionicons name="checkmark" size={24} color={AppColors.accent} />
+                        )}
+                      </View>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
